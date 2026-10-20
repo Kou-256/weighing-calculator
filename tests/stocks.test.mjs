@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats } from "../src/lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../src/lib/reagent-presets.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
@@ -124,4 +124,34 @@ test("extended product records retain validation and legacy backup compatibility
   assert.throws(()=>validateBackup({schema:1,stocks:[designForm({acidPercent:"101"})],records:[]}));
   assert.throws(()=>validateBackup({schema:1,stocks:[designForm({productMolarMass:"0"})],records:[]}));
   assert.throws(()=>validateBackup({schema:1,stocks:[designForm({reportedPurity:"Infinity"})],records:[]}));
+});
+test("balance target is rounded to 0.1 mg without changing the theoretical mass",()=>{
+  const mass=stockDesign(designForm()).massG;
+  close(mass,.01407672);close(balanceMass(mass),.0141);
+  assert.equal(balanceMass(.00001),0);assert.ok(Number.isNaN(balanceMass(-1)));
+});
+test("acid volume is derived from oxide stoichiometry and selected acid properties",()=>{
+  const form=designForm({massG:"0.0141"});
+  const theoretical=acidRequirement(form);
+  close(theoretical.ml,(.0141/351.918*6)/(1.38*.6/63.01));
+  close(theoretical.grams,theoretical.ml*1.38);
+  close(acidRequirement(form,10).ml,theoretical.ml*10);
+  assert.match(acidRequirement(form,"").error,/倍率/);
+  assert.match(acidRequirement(form,.5).error,/倍率/);
+  assert.match(acidRequirement({...form,oxideId:"CeO2"}).error,/理論/);
+  assert.match(acidRequirement({...form,acidDensity:""}).error,/密度/);
+});
+test("acid planning retains concentration ranges and molarity-based input",()=>{
+  const f=designForm({acidMode:"w60"}), p=acidRequirement(f);
+  close(p.ml/p.minMl,61/60);
+  const molar=acidRequirement({...f,acidMode:"molar",acidMolarity:"10",acidDensity:""});
+  close(molar.ml,molar.theoreticalMol/10*1000);assert.equal(molar.grams,null);
+});
+test("aliquot counts reproduce 1, 2 and 10 repetitions of 0.5 mL",()=>{
+  for(const count of [1,2,10]){
+    const p=aliquotRepeats(.5*count,.5);assert.equal(p.count,count);assert.equal(p.remainderMl,0);assert.equal(p.feasible,true);
+  }
+  const p=aliquotRepeats(4.99,.5);assert.equal(p.count,9);close(p.remainderMl,.49);assert.equal(p.feasible,true);
+  assert.equal(aliquotRepeats(1.05,.5).feasible,false);
+  assert.match(aliquotRepeats(.5,.05).error,/基準/);
 });

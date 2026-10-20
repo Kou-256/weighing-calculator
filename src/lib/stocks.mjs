@@ -88,6 +88,33 @@ export function stockDesign(form) {
   const error=aliquot>limitMl+1e-9 ? `分取量が添加液量の上限${pretty(limitMl)} mLを超えています。` : !pipette ? "分取量は100–1000 µL（1 µL刻み）または1–10 mL（0.01 mL刻み）で指定してください。" : "";
   return {error,massG,concentration:c,requiredMol,limitMl,pipette};
 }
+export function balanceMass(massG) {
+  if(!Number.isFinite(Number(massG)) || Number(massG)<=0) return NaN;
+  return Math.round(Number(massG)*10000)/10000;
+}
+// Formal stoichiometry only. No empirical dissolution excess is inferred.
+export function acidRequirement(stock, multiplier=1) {
+  const theoretical=acidInfo(stock).theoretical, factor=Number(multiplier);
+  if(theoretical===null || !Number.isFinite(theoretical) || theoretical<=0) return {error:"この酸化物・秤量値では硝酸の理論必要量を計算できません。"};
+  if(!Number.isFinite(factor)||factor<1) return {error:"投入計画の倍率は、確認済みの条件に基づき1以上で指定してください。"};
+  // Use one mL to retain the legacy 60–61% range and avoid duplicating conversions.
+  const perMl=acidInfo({...stock,acidAmount:"1",acidUnit:"ml"}).range;
+  if(!perMl || !perMl.every(v=>Number.isFinite(v)&&v>0)) return {error:"硝酸濃度と、体積換算に必要な密度を確認してください。"};
+  const mol=theoretical*factor;
+  const ml=mol/perMl[0], minMl=mol/perMl[1];
+  const density=Number(stock.acidDensity);
+  if(!Number.isFinite(ml)||ml<=0) return {error:"計算可能な範囲を超えています。"};
+  return {theoreticalMol:theoretical,mol,ml,minMl,grams:density>0?ml*density:null,factor};
+}
+export function aliquotRepeats(totalMl, baseMl) {
+  const total=Number(totalMl)*1000, base=Number(baseMl)*1000;
+  const pipette=PIPETTES.find(p=>validVolume(base,p));
+  if(!Number.isFinite(total)||total<=0||!pipette) return {error:"基準分取量をピペットの容量・刻みに合わせて指定してください。"};
+  const count=Math.floor((total+1e-7)/base);
+  const remainderUl=Number((total-count*base).toFixed(7));
+  const remainderPipe=remainderUl>1e-7?PIPETTES.find(p=>validVolume(remainderUl,p)):null;
+  return {count,remainderMl:Math.max(0,remainderUl)/1000,ratio:total/base,pipette,feasible:remainderUl<=1e-7||Boolean(remainderPipe),remainderPipe};
+}
 // Includes the unrounded ideal volume: rounding must never conceal a budget overrun.
 export function targetDose(stock, targetMol, percent) {
   const n=Number(targetMol), x=Number(percent), c=concentration(stock);

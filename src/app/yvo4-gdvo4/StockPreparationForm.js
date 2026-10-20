@@ -1,7 +1,8 @@
 "use client";
 
-import { STOCK_OXIDES, oxideById, stockMolarMass, stockDesign, targetDose, pretty, acidInfo, concentration } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, oxideById, stockMolarMass, stockDesign, targetDose, balanceMass, pretty, acidInfo, concentration } from "../../lib/stocks.mjs";
 import { NITRIC_ACID, nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
+import { ConcentrationSeries, AcidPlanning } from "./StockPlanningTools";
 
 export default function StockPreparationForm({form,setForm}) {
   const update=patch=>setForm(old=>({...old,...patch}));
@@ -13,7 +14,8 @@ export default function StockPreparationForm({form,setForm}) {
   const c=concentration(preview), acid=acidInfo(preview);
   const dose=targetDose(preview,form.designMol,form.designPercent);
   const acidMl=form.acidUnit==="g" ? Number(form.acidAmount)/Number(form.acidDensity) : Number(form.acidAmount);
-  const series=[...new Set([.01,.02,.03,.04,.1,Number(form.designPercent)])].filter(x=>x>0&&x<=100).sort((a,b)=>a-b);
+  const roundedMass=balanceMass(design.massG);
+  const plannedStock={...preview,massG:String(form.planningMassBasis==="theoretical"?design.massG:roundedMass)};
   return <>
     <section className="stock-step" aria-labelledby="stock-step-acid">
       <h4 id="stock-step-acid"><span>1</span> 溶かす硝酸と投入量</h4>
@@ -68,10 +70,20 @@ export default function StockPreparationForm({form,setForm}) {
       <p className="stock-caption">mol%は、合成の基準モル数に対する{oxide.element}原子の物質量の割合です（酸化物の質量%ではありません）。定容には選択した硝酸を使用。複数ストックを併用するときは、合計の分取量に上限を適用します。</p>
       {form.designMode==="target"&&(design.error?<p className="stock-warning" role="alert">{design.error}</p>:<div className="stock-preview stock-design-result">
         <dl className="stock-metrics"><div><dt>酸化物の推奨秤量値</dt><dd>{pretty(design.massG,8)} g</dd></div><div><dt>設計した金属濃度</dt><dd>{pretty(design.concentration*1000)} mmol/L</dd></div><div><dt>このストックの分取量</dt><dd>{form.designAliquotMl} mL</dd></div><div><dt>他のストックを使わない場合の追加硝酸</dt><dd>{pretty(design.limitMl-Number(form.designAliquotMl))} mL</dd></div></dl>
+        <div className="stock-balance-mass"><span>天秤の表示刻み 0.1 mg（0.0001 g）に丸めた目安</span><strong>{roundedMass.toFixed(4)} g</strong><small>理論値との差 {pretty((roundedMass/design.massG-1)*100,4)}%。最低秤量量や精度を保証する値ではありません。</small></div>
         <button type="button" className="secondary-button" onClick={()=>update({massG:design.massG.toPrecision(12)})}>計算値を実秤量欄へ転記</button>
+        <button type="button" className="secondary-button" disabled={roundedMass<=0} onClick={()=>update({massG:roundedMass.toFixed(4)})}>0.1 mg刻みの目安を実秤量欄へ転記</button>
         <p className="stock-caption">転記後は、実際に天秤で量った値へ修正してください。天秤の最小表示0.0001 gと最低秤量量は異なります。</p>
         <details className="stock-details"><summary>推奨秤量値の計算過程</summary><p>必要な{oxide.element} = {form.designMol} mol × {form.designPercent} ÷ 100 = {pretty(design.requiredMol)} mol</p><p>ストック金属濃度 = {pretty(design.requiredMol)} mol ÷ ({form.designAliquotMl} mL ÷ 1000) = {pretty(design.concentration)} mol/L</p><p>酸化物秤量値 = {pretty(design.concentration)} mol/L × ({form.finalMl} mL ÷ 1000) ÷ 金属原子数{oxide.metalAtoms} × {pretty(stockMolarMass(form))} g/mol ÷ {form.purity?`(${form.purity} ÷ 100)` : "1（含量補正なし）"} = {pretty(design.massG,8)} g</p></details>
       </div>)}
+      {form.designMode==="target"&&!design.error&&<>
+        <label className="stock-field">調製前の計算に使う秤量値<select aria-label="調製前の計算に使う秤量値" value={form.planningMassBasis||"rounded"} onChange={e=>update({planningMassBasis:e.target.value})}><option value="rounded">0.1 mg刻みに丸めた目安</option><option value="theoretical">理論上の推奨秤量値</option></select></label>
+        {roundedMass<=0&&form.planningMassBasis!=="theoretical"?<p className="stock-warning">丸めると0.0000 gになります。ストックの調製量を増やすなど、秤量設計を見直してください。</p>:<>
+          <AcidPlanning stock={plannedStock} multiplier={form.acidMultiplier} onMultiplierChange={value=>update({acidMultiplier:value})} onApply={update}/>
+          <h4>調製前の濃度別・分取量一覧</h4><p className="stock-caption">{form.planningMassBasis==="theoretical"?"理論値":"0.1 mg刻みの目安"} {pretty(Number(plannedStock.massG),8)} gで調製した場合の参考表です。実秤量後は下の確定値を確認してください。目標濃度の設計を変えずに、別のmol%を検索できます。</p>
+          <ConcentrationSeries stock={plannedStock} targetMol={form.designMol} baseMl={form.designAliquotMl} queryPercent={form.queryPercent??"0.01"} onQueryChange={value=>update({queryPercent:value})}/>
+        </>}
+      </>}
     </section>
 
     <section className="stock-step" aria-labelledby="stock-step-measured">
@@ -82,9 +94,9 @@ export default function StockPreparationForm({form,setForm}) {
         <p className="stock-delivered">{oxide.element}濃度：{pretty(c*1000)} mmol/L。目標 {form.designPercent} mol%の理論分取量：{pretty(dose.idealMl)} mL。</p>
         {dose.error?<p className="stock-warning" role="alert">{dose.error}</p>:<p className="stock-success">ピペット設定 {pretty(dose.settingMl)} mL ＋ 追加硝酸 {pretty(dose.additionalMl)} mL。設定後の{oxide.element}濃度 {pretty(dose.actualPercent)} mol%（他のストックなしの場合）。</p>}
         <details className="stock-details"><summary>濃度系列と追加硝酸量を確認</summary>
-          <p>基準 {form.designMol} mol／添加液量の上限 {pretty(5*Number(form.designMol)/.004)} mL。理論分取量・ピペットの刻み・実濃度を別々に表示します。上限を超える理論量を丸めて隠しません。</p>
-          <div className="stock-series-wrap"><table className="stock-series"><thead><tr><th>目標 mol%</th><th>理論 mL</th><th>設定 mL</th><th>追加硝酸 mL</th><th>設定後 mol%</th></tr></thead><tbody>{series.map(x=>{const row=targetDose(preview,form.designMol,x);return <tr key={x}><th>{x}</th><td>{pretty(row.idealMl)}</td>{row.error?<td colSpan="3" className="stock-series-error">{row.error}</td>:<><td>{pretty(row.settingMl)}</td><td>{pretty(row.additionalMl)}</td><td>{pretty(row.actualPercent)}</td></>}</tr>;})}</tbody></table></div>
+          <ConcentrationSeries stock={preview} targetMol={form.designMol} baseMl={form.designAliquotMl} queryPercent={form.queryPercent??"0.01"} onQueryChange={value=>update({queryPercent:value})}/>
         </details>
+        <details className="stock-details"><summary>実秤量値に基づく硝酸投入計画</summary><AcidPlanning stock={preview} multiplier={form.acidMultiplier} onMultiplierChange={value=>update({acidMultiplier:value})} onApply={update}/></details>
       </>}
     </section>
 

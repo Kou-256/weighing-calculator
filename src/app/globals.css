@@ -899,6 +899,10 @@ footer a:hover { text-decoration: underline; }
 .stock-step h4 { display: flex; align-items: center; gap: 9px; }
 .stock-step h4 > span { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); font-size: .8rem; }
 .stock-design-result { display: grid; gap: 14px; }
+.stock-acid-plan { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); }
+.stock-balance-mass { display: grid; gap: 7px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.stock-balance-mass span, .stock-balance-mass small { font-size: .8rem; color: var(--muted); }
+.stock-balance-mass strong { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .stock-series-wrap { max-width: 100%; overflow-x: auto; margin-top: 12px; }
 .stock-series { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
 .stock-series th, .stock-series td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
