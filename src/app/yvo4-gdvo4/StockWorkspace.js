@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
-import { STOCK_OXIDES, PIPETTES, oxideById, stockMolarMass, stockDesign, targetDose, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, PIPETTES, oxideById, stockMolarMass, stockDesign, targetDose, resolveStockForm, preparationError, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
 import StockPreparationForm from "./StockPreparationForm";
 
 const STORAGE="weighing_stocks_v1";
 const StockContext=React.createContext(null);
 const emptyData=()=>({schema:1,stocks:[],records:[],delivery:{},drafts:{}});
-const newForm=()=>({name:"",...oxidePreset("Eu2O3"),massG:"",finalMl:"100",designMode:"target",designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",...nitricPreset(),acidAmount:"",acidUnit:"ml",notes:""});
-const revisionForm=stock=>({...newForm(),...Object.fromEntries(Object.keys(oxidePreset(stock.oxideId)).filter(key=>key!=="oxideId"&&key!=="purity").map(key=>[key,""])),...stock,designMode:stock.designMode||"mass",acidProduct:stock.acidProduct||"manual",acidName:stock.acidName||"硝酸（従来記録）",name:`${stock.name}（新版）`});
+const newForm=()=>({name:"",...oxidePreset("Eu2O3"),massG:"",finalMl:"100",volumeMode:"batch",batchCount:"200",finalVolumeConfirmed:false,designMode:"target",designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",...nitricPreset(),acidAmount:"",acidUnit:"ml",notes:""});
+const revisionForm=stock=>({...newForm(),...Object.fromEntries(Object.keys(oxidePreset(stock.oxideId)).filter(key=>key!=="oxideId"&&key!=="purity").map(key=>[key,""])),...stock,volumeMode:stock.volumeMode||"manual",finalVolumeConfirmed:false,designMode:stock.designMode||"mass",acidProduct:stock.acidProduct||"manual",acidName:stock.acidName||"硝酸（従来記録）",name:`${stock.name}（新版）`});
 const uid=()=>crypto.randomUUID();
 
 export function StockProvider({children}) {
@@ -141,7 +141,8 @@ export function StockBudget({budget}) {
 
 export function StockManager() {
   const {data,setData,ready,storageError,recover}=useStocks();
-  const [form,setForm]=React.useState(newForm);
+  const [draftForm,setForm]=React.useState(newForm);
+  const form=resolveStockForm(draftForm);
   const [parentId,setParentId]=React.useState(null);
   const [message,setMessage]=React.useState("");
   const [problem,setProblem]=React.useState("");
@@ -171,6 +172,8 @@ export function StockManager() {
   const save=event=>{
     event.preventDefault();setProblem("");setMessage("");
     if(formError){setProblem(formError);return;}
+    const preparationProblem=preparationError(form);
+    if(preparationProblem){setProblem(preparationProblem);return;}
     if(!STOCK_OXIDES.some(oxide=>oxide.id===form.oxideId)){setProblem("Y₂O₃は粉末秤量のみ対応しています。");return;}
     if(!ready||storageError){setProblem("保存先を確認してください。台帳を読み込めない場合はJSONバックアップを確認してください。");return;}
     if(data.stocks.length>=500){setProblem("ストックの登録上限は500件です。バックアップを保存して台帳を整理してください。");return;}

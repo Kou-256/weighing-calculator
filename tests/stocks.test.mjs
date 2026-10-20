@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats, resolveStockForm, preparationError } from "../src/lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../src/lib/reagent-presets.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
@@ -154,4 +154,24 @@ test("aliquot counts reproduce 1, 2 and 10 repetitions of 0.5 mL",()=>{
   const p=aliquotRepeats(4.99,.5);assert.equal(p.count,9);close(p.remainderMl,.49);assert.equal(p.feasible,true);
   assert.equal(aliquotRepeats(1.05,.5).feasible,false);
   assert.match(aliquotRepeats(.5,.05).error,/基準/);
+});
+test("automatic final volume is a target based on aliquot times batch count, not acid input",()=>{
+  const form=designForm({designMode:"target",volumeMode:"batch",batchCount:"200",acidAmount:"10"});
+  close(Number(resolveStockForm(form).finalMl),100);
+  close(Number(resolveStockForm({...form,acidAmount:"1"}).finalMl),100);
+  close(Number(resolveStockForm({...form,batchCount:"40"}).finalMl),20);
+  close(stockDesign(resolveStockForm({...form,batchCount:"40"})).massG,.002815344);
+  for(const batchCount of ["", "0", "-1", "2.5", "Infinity", "1000001"]){
+    assert.equal(resolveStockForm({...form,batchCount}).finalMl,"");
+    assert.match(preparationError({...form,batchCount}),/回数/);
+  }
+});
+test("automatic preparation requires real final-volume confirmation; legacy methods remain valid",()=>{
+  const form=designForm({designMode:"target",volumeMode:"batch",batchCount:"200"});
+  assert.match(preparationError(form),/定容/);
+  assert.equal(preparationError({...form,finalVolumeConfirmed:true}),"");
+  const manual={...form,volumeMode:"manual",finalMl:"75"};
+  assert.equal(resolveStockForm(manual),manual);assert.equal(preparationError(manual),"");
+  const old=stock();assert.equal(resolveStockForm(old),old);assert.equal(preparationError(old),"");
+  assert.ok(validateBackup({schema:1,stocks:[old],records:[]}));
 });

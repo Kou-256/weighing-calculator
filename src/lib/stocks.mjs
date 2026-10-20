@@ -26,6 +26,20 @@ export const PIPETTES = [
 ];
 export const oxideById = id => OXIDES.find(x=>x.id===id);
 export const stockMolarMass = stock => stock.productMolarMass!=="" && stock.productMolarMass!=null ? Number(stock.productMolarMass) : oxideById(stock.oxideId)?.molarMass;
+export function resolveStockForm(form) {
+  if(form.volumeMode!=="batch" || form.designMode!=="target") return form;
+  const count=Number(form.batchCount), aliquot=Number(form.designAliquotMl);
+  const finalMl=Number.isInteger(count)&&count>=1&&count<=1000000&&Number.isFinite(aliquot)&&aliquot>0 ? count*aliquot : NaN;
+  return {...form,finalMl:Number.isFinite(finalMl)&&finalMl>0?String(finalMl):""};
+}
+export function preparationError(form) {
+  if(form.volumeMode==="batch"&&form.designMode==="target") {
+    const count=Number(form.batchCount);
+    if(!Number.isInteger(count)||count<1||count>1000000) return "作る回数は1〜1000000の整数で指定してください。";
+    if(!form.finalVolumeConfirmed) return "冷却後、表示された目標体積に定容したことを確認してください。計算値は実測体積ではありません。";
+  }
+  return "";
+}
 export const pretty = (n, places=6) => {
   if (!Number.isFinite(Number(n))) return "—";
   if (Number(n)!==0 && Math.abs(Number(n)) < 10**-places) return Number(n).toExponential(3);
