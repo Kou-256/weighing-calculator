@@ -884,3 +884,73 @@ footer a:hover { text-decoration: underline; }
   .compound-toggle button,
   .element-button { transition-duration: 0.01ms; }
 }
+
+/* Stock preparation and dispensing share the calculator's existing tokens. */
+[hidden] { display: none !important; }
+.workspace-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  padding: 4px; margin: 16px 0; border: 1px solid var(--border);
+  border-radius: 999px; background: #eaeaec;
+}
+.workspace-tabs button { min-height: 44px; padding: 8px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
+.workspace-tabs button.is-active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
+.stock-workspace { display: grid; gap: 18px; }
+.stock-workspace h3 { margin: 0; font-size: 1.08rem; font-weight: 600; }
+.stock-workspace h4, .stock-budget h4 { margin: 0; font-size: .95rem; font-weight: 600; }
+.stock-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.stock-toolbar .secondary-button { min-height: 40px; flex: 1 1 180px; }
+.stock-caption, .stock-empty { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.7; font-weight: 400; overflow-wrap: anywhere; }
+.stock-empty { padding: 14px 0; }
+.stock-create, .stock-ledger, .stock-history, .stock-aliquot-test { display: grid; gap: 14px; padding-top: 18px; border-top: 1px solid var(--border); }
+.stock-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.stock-field { display: grid; gap: 7px; min-width: 0; font-size: .82rem; font-weight: 500; }
+.stock-field input, .stock-field select, .stock-field textarea, .delivery-selector select, .stock-volume-control input {
+  width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 11px; color: var(--text); background: var(--surface);
+  font: inherit; font-weight: 500;
+}
+.stock-field select, .delivery-selector select { text-overflow: ellipsis; }
+.stock-field textarea { resize: vertical; }
+.stock-create > .primary-button { width: 100%; }
+.stock-preview, .stock-card, .stock-budget { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); }
+.stock-preview { background: var(--accent-soft); }
+.stock-card { display: grid; gap: 10px; }
+.stock-card.is-archived { border-style: dashed; }
+.stock-card-concentration { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.stock-card-concentration small { font-size: .78rem; font-weight: 500; color: var(--muted); }
+.stock-dose-title { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.stock-dose-title > span { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.stock-count { display: inline-block; border-radius: 99px; padding: 2px 9px; background: var(--accent-soft); color: var(--accent); font-size: .8rem; }
+.stock-metrics { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 0; }
+.stock-metrics div { min-width: 0; }
+.stock-metrics dt { font-size: .75rem; font-weight: 400; color: var(--muted); }
+.stock-metrics dd { margin: 4px 0 0; font-size: 1.02rem; font-weight: 600; overflow-wrap: anywhere; }
+.stock-details { min-width: 0; border-top: 1px solid var(--border); padding-top: 10px; }
+.stock-details summary { color: var(--accent); font-size: .82rem; font-weight: 500; cursor: pointer; padding: 4px 0; }
+.stock-details p { font-size: .8rem; line-height: 1.7; color: var(--muted); margin: 10px 0 0; overflow-wrap: anywhere; }
+.stock-details .stock-form-grid { margin: 14px 0; }
+.stock-notes { white-space: pre-wrap; }
+.stock-warning, .stock-success, .stock-delivered { border-radius: 10px; margin: 0; padding: 10px 12px; font-size: .8rem; line-height: 1.65; font-weight: 500; overflow-wrap: anywhere; }
+.stock-warning { background: #fff5e8; color: #8a4700; border: 1px solid #f1d7b2; }
+.stock-success { background: #edf8f1; color: #236a3e; }
+.stock-delivered { color: var(--text); background: var(--accent-soft); }
+.delivery-selector { grid-column: 1/-1; display: grid; gap: 10px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.delivery-selector label { display: grid; gap: 5px; font-size: .76rem; color: var(--muted); font-weight: 500; }
+.delivery-selector .stock-warning { grid-column: 1/-1; }
+.stock-dose { grid-column: 1/-1; display: grid; gap: 12px; padding-top: 5px; }
+.stock-volume-control { display: grid; grid-template-columns: minmax(100px,1fr) auto; gap: 10px; align-items: end; }
+.stock-volume-control label { display: grid; gap: 6px; font-size: .8rem; font-weight: 500; }
+.stock-volume-control .secondary-button { min-height: 44px; }
+.stock-save-use { width: 100%; min-height: 42px; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+.stock-budget { display: grid; gap: 12px; margin-top: 14px; background: var(--accent-soft); }
+.stock-budget.has-warning { background: #fffaf4; }
+.stock-history-row { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: .82rem; }
+.stock-history-row span, .stock-history-row small { color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 520px) {
+  .stock-form-grid, .delivery-selector { grid-template-columns: 1fr; }
+  .stock-budget, .stock-card, .stock-preview { padding: 13px; }
+  .stock-volume-control { grid-template-columns: minmax(100px,1fr) auto; }
+  .stock-volume-control .secondary-button { padding: 0 10px; font-size: .76rem; }
+  .stock-field input, .stock-field select, .stock-field textarea, .stock-volume-control input { font-size: 16px; }
+}

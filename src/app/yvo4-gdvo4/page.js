@@ -2,6 +2,8 @@
 
 import React from "react";
 import Image from "next/image";
+import { StockProvider, useStocks, StockManager, DeliverySelector, StockDose, StockBudget, setStockLines, liquidBudget } from "./StockWorkspace";
+import { csvCell, downloadFile, concentration } from "../../lib/stocks.mjs";
 
 const COMPOUNDS = {
   yvo4: {
@@ -21,6 +23,7 @@ const COMPOUNDS = {
 };
 
 const RARE_EARTH_DOPANTS = {
+  Sc: "Sc₂O₃",
   Tm: "Tm₂O₃",
   Eu: "Eu₂O₃",
   Er: "Er₂O₃",
@@ -34,12 +37,15 @@ const RARE_EARTH_DOPANTS = {
   Pr: "Pr₂O₃",
   Ce: "Ce₂O₃",
   La: "La₂O₃",
+  Lu: "Lu₂O₃",
 };
 
 const OTHER_SUBSTITUENTS = { Bi: "Bi₂O₃" };
 const ALL_ADDITIVES = { ...RARE_EARTH_DOPANTS, ...OTHER_SUBSTITUENTS };
 
 const MATERIALS = {
+  "Sc₂O₃": 137.91,
+  "Lu₂O₃": 397.9318,
   "V₂O₅": 181.8804,
   "Y₂O₃": 225.8982,
   "Bi₂O₃": 465.959,
@@ -151,7 +157,7 @@ function CalculationBreakdown({ compound, results, selectedDopants, concentratio
                 const molarMass = MATERIALS[material];
                 const formula = material === "V₂O₅"
                   ? `${formatDisplayNumber(targetMetalMol, 8)} mol ÷ 2 × ${formatDisplayNumber(molarMass, 8)} g/mol`
-                  : `${formatDisplayNumber(targetMetalMol, 8)} mol × ${formatPercentage(concentration)}% ÷ 100 ÷ 2 × ${formatDisplayNumber(molarMass, 8)} g/mol`;
+                  : `${formatDisplayNumber(targetMetalMol, 8)} mol × (${formatPercentage(concentration)} ÷ 100) ÷ 2 × ${formatDisplayNumber(molarMass, 8)} g/mol`;
 
                 return (
                   <div className="calculation-equation" key={material}>
@@ -218,6 +224,8 @@ function ElementButton({ element, selected, onClick }) {
 }
 
 function MainComponent() {
+  const stockState = useStocks();
+  const [activeView, setActiveView] = React.useState("calculator");
   const [selectedCompound, setSelectedCompound] = React.useState("yvo4");
   const [selectedDopants, setSelectedDopants] = React.useState([]);
   const [targetMol, setTargetMol] = React.useState("0.004");
@@ -452,35 +460,39 @@ function MainComponent() {
     setWeightedMaterials(makeEmptySets(DEFAULT_SET_COUNT));
     setResults(null);
     setErrorMessage("");
+    stockState.setData((current) => ({ ...current, delivery: {}, drafts: {} }));
   };
 
   const exportToCSV = () => {
     if (!results) return;
-    const rows = [["化合物", "セット", "材料", "計算値 (g)", "測定値 (g)", "秤量済み"]];
+    const rows = [["化合物", "セット", "材料", "計算値 (g)", "測定値 (g)", "秤量済み", "添加方法", "ストックID", "使用ストック", "金属濃度 (mol/L)", "理論分取 (µL)", "設定・分取 (µL)", "追加硝酸・理論 (mL)", "備考"]];
     setNumbers.forEach((setNumber) => {
+      const lines = setStockLines(stockState.data, results[setNumber].masses, MATERIALS, setNumber, targetMol, {compound:compound.formula,concentrations:results[setNumber].concentrations});
+      const budget = liquidBudget(targetMol, lines.map(line => line.invalid ? NaN : line.actualUl));
       Object.entries(results[setNumber].masses).forEach(([material, calculated]) => {
+        const line = lines.find(item => item.material === material);
         rows.push([
           compound.formula,
           setNumber,
           material,
           formatValue(calculated),
-          measuredValues[setNumber]?.[material] || "",
-          weightedMaterials[setNumber]?.[material] ? "はい" : "いいえ",
+          line ? "" : measuredValues[setNumber]?.[material] || "",
+          line ? "使用履歴を参照" : weightedMaterials[setNumber]?.[material] ? "はい" : "いいえ",
+          line ? "ストック" : "粉末", line?.stock?.id || "", line?.stock?.name || "",
+          line?.stock ? concentration(line.stock) : "", line?.plan?.idealUl ?? "",
+          line && !line.invalid ? line.actualUl : "",
+          budget.unresolved ? "未確定" : budget.remainingMl,
+          line?.plan?.error || (budget.over ? "液量上限超過" : budget.unresolved ? "分取条件未確定" : ""),
         ]);
       });
     });
-    const blob = new Blob(["\ufeff" + rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${compound.filePrefix}_measurements_${targetMol}mol.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    downloadFile(`${compound.filePrefix}_measurements_${targetMol}mol.csv`, "\ufeff" + rows.map(row => row.map(csvCell).join(",")).join("\r\n"), "text/csv;charset=utf-8");
   };
 
   const reagentAmounts = React.useMemo(() => {
     const ratio = Number(targetMol || 0) / BASE_METAL_MOL;
     return {
-      "硝酸": `${(5 * ratio).toFixed(2)} ml`,
+      "添加液量の上限（ストック＋追加硝酸）": `${(5 * ratio).toFixed(3)} mL`,
       "純水": `${(40 * ratio).toFixed(2)} ml`,
       "クエン酸水和物": `${(3.3622 * ratio).toFixed(4)} g`,
       "プロピレングリコール": `${(1.17 * ratio).toFixed(2)} ml`,
@@ -525,6 +537,13 @@ function MainComponent() {
           </div>
         </section>
 
+        <nav className="workspace-tabs" aria-label="計算ツールの画面">
+          <button type="button" aria-pressed={activeView === "calculator"} className={activeView === "calculator" ? "is-active" : ""} onClick={() => setActiveView("calculator")}>組成・秤量計算</button>
+          <button type="button" aria-pressed={activeView === "stocks"} className={activeView === "stocks" ? "is-active" : ""} onClick={() => setActiveView("stocks")}>ストック溶液</button>
+        </nav>
+        {stockState.storageError && <p className="stock-warning" role="alert">{stockState.storageError}</p>}
+        <div hidden={activeView !== "stocks"}><StockManager /></div>
+        <div hidden={activeView !== "calculator"}>
         <div className="workspace-grid">
           <aside className="settings-panel" aria-label="計算設定">
             <div className="setting-field">
@@ -714,7 +733,10 @@ function MainComponent() {
             <p className="adjustment-guide">微調整の中央の数値を変更すると、±ボタンと実測値の矢印キーの増減幅が変わります。</p>
 
             <div className="result-set-list">
-              {setNumbers.map((setNumber) => (
+              {setNumbers.map((setNumber) => {
+                const lines = setStockLines(stockState.data, results[setNumber].masses, MATERIALS, setNumber, targetMol, {compound:compound.formula,concentrations:results[setNumber].concentrations});
+                const budget = liquidBudget(targetMol, lines.map(line => line.invalid ? NaN : line.actualUl));
+                return (
                 <article className="result-set" key={setNumber}>
                   <div className="result-set-title">
                     <h3>セット {setNumber}</h3>
@@ -724,10 +746,15 @@ function MainComponent() {
                     <div className="result-header" role="row">
                       <span>試薬</span><span>計算値</span><span>実測値</span><span>秤量済み</span><span>微調整</span>
                     </div>
-                    {Object.entries(results[setNumber].masses).map(([material, calculated]) => (
+                    {Object.entries(results[setNumber].masses).map(([material, calculated]) => {
+                      const line = lines.find(item => item.material === material);
+                      const element = material === compound.hostOxide ? compound.hostElement : Object.keys(ALL_ADDITIVES).find(key => ALL_ADDITIVES[key] === material);
+                      return (
                       <div className="result-row" role="row" key={material}>
                         <strong className="material-name">{material}</strong>
                         <span className="calculated-value">{formatValue(calculated)} g</span>
+                        {element && <DeliverySelector material={material} element={element} />}
+                        {line ? <StockDose line={line} budget={budget} targetMol={targetMol} setNumber={setNumber} /> : <>
                         <div className="measured-field">
                           <span className="mobile-only-label">実測値</span>
                           <input
@@ -780,17 +807,19 @@ function MainComponent() {
                             <span>完了</span>
                           </label>
                         </div>
+                        </>}
                       </div>
-                    ))}
+                    );})}
                   </div>
+                  <StockBudget budget={budget} />
                 </article>
-              ))}
+              );})}
             </div>
 
             <div className="reagent-section">
               <div>
                 <h3>必要な試薬量</h3>
-                <p>目標モル数に合わせた目安です。</p>
+                <p>目標モル数に合わせた目安です。追加硝酸量は各セットの液量欄を確認してください。</p>
               </div>
               <dl>
                 {Object.entries(reagentAmounts).map(([name, amount]) => (
@@ -815,6 +844,7 @@ function MainComponent() {
             </div>
           </section>
         )}
+        </div>
 
         <footer>
           <a href="https://github.com/Kou-256/weighing-calculator" target="_blank" rel="noreferrer">
@@ -827,4 +857,6 @@ function MainComponent() {
   );
 }
 
-export default MainComponent;
+export default function Calculator() {
+  return <StockProvider><MainComponent /></StockProvider>;
+}
