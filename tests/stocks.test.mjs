@@ -201,3 +201,20 @@ test("conclusion warns about insufficient formal acid and incompatible preparati
   assert.match(preparationSummary({...f,initialAcidMl:"100"}).warning,/目標体積以上/);
   assert.equal(preparationSummary({...f,massG:"-1"}).ready,false);
 });
+
+test("initial acid and requested aliquot count plan without a literature loading ratio",()=>{
+  const input=designForm({massG:"",designMode:"target",volumeMode:"batch",batchCount:"200",initialAcidMl:"5"});
+  const form=resolveStockForm(input), design=stockDesign(form), summary=preparationSummary(form);
+  close(Number(form.finalMl),100);close(design.massG,.01407672);close(summary.massG,.0141);close(summary.initialMl,5);
+  for(const initialAcidMl of ["1","10","20"]){
+    const changed=resolveStockForm({...input,initialAcidMl});
+    close(stockDesign(changed).massG,design.massG);close(Number(changed.finalMl),100);
+  }
+  const twice=resolveStockForm({...input,batchCount:"400"});
+  close(Number(twice.finalMl),200);close(stockDesign(twice).massG,2*design.massG);
+  const higher=resolveStockForm({...input,designPercent:"0.02"});
+  close(Number(higher.finalMl),100);close(stockDesign(higher).massG,2*design.massG);
+  // A different aliquot changes volume, but not the total metal required for 200 syntheses.
+  const bigger=resolveStockForm({...input,designAliquotMl:"1"});
+  close(Number(bigger.finalMl),200);close(stockDesign(bigger).massG,design.massG);
+});
