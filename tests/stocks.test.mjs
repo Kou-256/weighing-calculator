@@ -1,9 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, csvCell } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell } from "../src/lib/stocks.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-10,`${a} != ${b}`);
+
+test("Y2O3 is powder-only, while historical backups remain readable",()=>{
+  assert.equal(STOCK_OXIDES.some(oxide=>oxide.id==="Y2O3"),false);
+  const oldStock=stock({oxideId:"Y2O3"});
+  assert.match(dosePlan(oldStock,4e-6).error,/粉末秤量のみ/);
+  assert.ok(validateBackup({schema:1,stocks:[oldStock],records:[]}));
+});
 
 test("Bi stock: 0.1 g / 100 mL, 0.1% in 0.004 mol",()=>{
   const s=stock();close(concentration(s),2*0.1/465.959/0.1);

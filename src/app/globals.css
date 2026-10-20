@@ -911,6 +911,22 @@ footer a:hover { text-decoration: underline; }
 }
 .stock-field select, .delivery-selector select { text-overflow: ellipsis; }
 .stock-field textarea { resize: vertical; }
+.stock-field input[type="date"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.stock-field input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+.stock-field input[type="date"]::-webkit-datetime-edit { min-width: 0; padding: 0; }
+.stock-field input[type="date"]::-webkit-calendar-picker-indicator { flex-shrink: 0; margin-left: 4px; }
 .stock-create > .primary-button { width: 100%; }
 .stock-preview, .stock-card, .stock-budget { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-soft); }
 .stock-preview { background: var(--accent-soft); }

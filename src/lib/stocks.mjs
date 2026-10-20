@@ -18,6 +18,8 @@ export const OXIDES = elements.map(([element, atomicMass]) => ({
   {id:"Pr6O11",element:"Pr",formula:"Pr₆O₁₁",metalAtoms:6,molarMass:1021.4396,acidCoefficient:null},
   {id:"Tb4O7",element:"Tb",formula:"Tb₄O₇",metalAtoms:4,molarMass:747.6974,acidCoefficient:null},
 ]);
+// Keep Y2O3 metadata for reading historical backups, not for new stock use.
+export const STOCK_OXIDES = OXIDES.filter(oxide => oxide.id !== "Y2O3");
 export const PIPETTES = [
   {id:"micro",name:"100–1000 µL（1 µL刻み）",min:100,max:1000,step:1},
   {id:"large",name:"1–10 mL（0.01 mL刻み）",min:1000,max:10000,step:10},
@@ -67,6 +69,7 @@ export function acidInfo(stock) {
 export function dosePlan(stock, requiredMol, pipetteId="auto") {
   if (!Number.isFinite(requiredMol)||requiredMol<0) return {error:"必要物質量が不正です。"};
   if (!stock || stockError(stock)) return {error:"使用するストックを登録・選択してください。"};
+  if (stock.oxideId === "Y2O3") return {error:"Y₂O₃は粉末秤量のみ対応しています。"};
   const c=concentration(stock);
   const idealUl=requiredMol/c*1e6;
   if(requiredMol===0) return {idealUl:0,settingUl:0,deliveredMol:0,errorPercent:0,pipette:null,concentration:c};

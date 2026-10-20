@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { OXIDES, PIPETTES, oxideById, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, PIPETTES, oxideById, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
 
 const STORAGE="weighing_stocks_v1";
 const StockContext=React.createContext(null);
@@ -31,6 +31,7 @@ export const useStocks=()=>React.useContext(StockContext);
 
 export function DeliverySelector({material,element}) {
   const {data,setData}=useStocks();
+  if(element === "Y") return null;
   const selected=data.delivery[material]||{};
   const matching=data.stocks.filter(s=>oxideById(s.oxideId)?.element===element&&!s.archived);
   const update=(patch)=>setData(old=>({...old,delivery:{...old.delivery,[material]:{...old.delivery[material],...patch}}}));
@@ -51,6 +52,7 @@ export function DeliverySelector({material,element}) {
 }
 
 export function stockLine(data,material,requiredMol,setNumber,targetMol,experiment={}) {
+  if(material === "Y₂O₃") return null;
   const delivery=data.delivery[material]||{};
   if(delivery.mode!=="stock")return null;
   const stock=data.stocks.find(s=>s.id===delivery.stockId);
@@ -138,7 +140,7 @@ function StockFields({form,setForm}) {
   return <>
     <div className="stock-form-grid">
       {field("name","ストック名",{required:true,maxLength:100,placeholder:"例：Bi-2026-01"})}
-      <label className="stock-field">酸化物<select aria-label="酸化物" value={form.oxideId} onChange={e=>setForm(old=>({...old,oxideId:e.target.value}))}>{OXIDES.map(o=><option key={o.id} value={o.id}>{o.formula}</option>)}</select></label>
+      <label className="stock-field">酸化物<select aria-label="酸化物" value={form.oxideId} onChange={e=>setForm(old=>({...old,oxideId:e.target.value}))}>{STOCK_OXIDES.map(o=><option key={o.id} value={o.id}>{o.formula}</option>)}</select></label>
       {field("massG","酸化物の実秤量値（g）",{required:true,type:"number",min:"0",step:"any",placeholder:"0.1000"})}
       {field("finalMl","冷却後の最終定容体積（mL）",{required:true,type:"number",min:"0",step:"any",placeholder:"100.00"})}
       {field("purity","酸化物含量（%・任意）",{type:"number",min:"0",max:"100",step:"any",placeholder:"未入力：補正なし"})}
@@ -170,6 +172,7 @@ export function StockManager() {
   const [testId,setTestId]=React.useState("");
   const [testUl,setTestUl]=React.useState("100");
   const fileRef=React.useRef(null);
+  const availableStocks=data.stocks.filter(s=>s.oxideId!=="Y2O3");
   const formError=stockError(form);
   const c=concentration(form),acid=acidInfo(form);
   const testStock=data.stocks.find(s=>s.id===testId);
@@ -190,6 +193,7 @@ export function StockManager() {
   const save=event=>{
     event.preventDefault();setProblem("");setMessage("");
     if(formError){setProblem(formError);return;}
+    if(!STOCK_OXIDES.some(oxide=>oxide.id===form.oxideId)){setProblem("Y₂O₃は粉末秤量のみ対応しています。");return;}
     if(!ready||storageError){setProblem("保存先を確認してください。台帳を読み込めない場合はJSONバックアップを確認してください。");return;}
     if(data.stocks.length>=500){setProblem("ストックの登録上限は500件です。バックアップを保存して台帳を整理してください。");return;}
     const stock={...form,name:form.name.trim(),id:uid(),createdAt:new Date().toISOString(),parentId,archived:false};
@@ -223,9 +227,9 @@ export function StockManager() {
       <button className="primary-button" type="submit" disabled={!ready||Boolean(storageError)}>ストックを登録</button>
       {parentId&&<button type="button" className="text-button" onClick={()=>{setForm(newForm());setParentId(null);}}>編集を取り消す</button>}
     </form>
-    <div className="stock-ledger"><h3>登録したストック <span className="stock-count">{data.stocks.length}</span></h3>
-      {!data.stocks.length&&<p className="stock-empty">まだストックがありません。実秤量値と最終定容体積から登録してください。</p>}
-      {data.stocks.map(s=><article key={s.id} className={`stock-card ${s.archived?"is-archived":""}`}>
+    <div className="stock-ledger"><h3>登録したストック <span className="stock-count">{availableStocks.length}</span></h3>
+      {!availableStocks.length&&<p className="stock-empty">まだストックがありません。実秤量値と最終定容体積から登録してください。</p>}
+      {availableStocks.map(s=><article key={s.id} className={`stock-card ${s.archived?"is-archived":""}`}>
         <div className="stock-dose-title"><h4>{s.name}</h4><span>{oxideById(s.oxideId).formula}</span></div>
         <p className="stock-card-concentration">{pretty(concentration(s)*1000)} <small>mmol/L（金属基準）</small></p>
         <p className="stock-caption">{s.massG} g → {s.finalMl} mL · {s.date||"日付未登録"} · {s.purity?`酸化物含量${s.purity}%`:"純度補正なし"}</p>
@@ -234,7 +238,7 @@ export function StockManager() {
         <div className="stock-toolbar"><button type="button" className="text-button" onClick={()=>{setForm({...newForm(),...s,name:`${s.name}（新版）`});setParentId(s.id);setMessage("上のフォームで変更し、新しい版として登録してください。旧版と使用履歴は保持します。");}}>複製・新しい版を作成</button><button type="button" className="text-button" onClick={()=>setData(old=>({...old,stocks:old.stocks.map(item=>item.id===s.id?{...item,archived:!item.archived}:item)}))}>{s.archived?"使用を再開":"使用を停止"}</button></div>
       </article>)}
     </div>
-    <section className="stock-aliquot-test"><h3>分取体積から添加量を確認</h3><div className="stock-form-grid"><label className="stock-field">ストック<select value={testId} onChange={e=>setTestId(e.target.value)}><option value="">選択してください</option>{data.stocks.filter(s=>!s.archived).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="stock-field">分取体積（µL）<input type="number" min="0" step="any" value={testUl} onChange={e=>setTestUl(e.target.value)}/></label></div>
+    <section className="stock-aliquot-test"><h3>分取体積から添加量を確認</h3><div className="stock-form-grid"><label className="stock-field">ストック<select value={testId} onChange={e=>setTestId(e.target.value)}><option value="">選択してください</option>{availableStocks.filter(s=>!s.archived).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="stock-field">分取体積（µL）<input type="number" min="0" step="any" value={testUl} onChange={e=>setTestUl(e.target.value)}/></label></div>
       {testStock && Number.isFinite(Number(testUl)) && Number(testUl)>=0 && <p className="stock-delivered">{oxideById(testStock.oxideId).element}として {pretty(concentration(testStock)*Number(testUl))} µmol · {oxideById(testStock.oxideId).formula}換算 {pretty(concentration(testStock)*Number(testUl)/1e6/oxideById(testStock.oxideId).metalAtoms*oxideById(testStock.oxideId).molarMass*1000)} mg{testStock.status!=="clear"?"（溶解未確認の参考値）":""}</p>}
     </section>
     <section className="stock-history"><h3>使用履歴 <span className="stock-count">{data.records.length}</span></h3>
@@ -243,7 +247,7 @@ export function StockManager() {
       {[...data.records].reverse().slice(0,30).map(r=><div key={r.id} className="stock-history-row"><strong>{r.stock.name} · セット{r.setNumber}</strong><span>{pretty(r.actualUl)} µL · {new Date(r.at).toLocaleString("ja-JP")}</span><small>使用時濃度 {pretty(concentration(r.stock)*1000)} mmol/L · 目標 {pretty(r.targetMol)} mol</small></div>)}
       {data.records.length>30&&<p className="stock-caption">最新30件を表示しています。全履歴はJSON・CSVに含まれます。</p>}
     </section>
-    <p className="stock-caption">天秤：SHIMADZU AY220、最大220 g・最小表示0.1 mg。最小表示は精度を保証する最低秤量量ではありません。希土類はSc・YとLa〜Lu（Pmを除く）、Biを登録できます。Ce・Pr・Tbは試薬の化学式を確認してください。</p>
+    <p className="stock-caption">天秤：SHIMADZU AY220、最大220 g・最小表示0.1 mg。最小表示は精度を保証する最低秤量量ではありません。ストックはScとLa〜Lu（Pmを除く）、Biを登録できます。Y₂O₃は粉末秤量のみ対応します。Ce・Pr・Tbは試薬の化学式を確認してください。</p>
   </section>;
 }
 
