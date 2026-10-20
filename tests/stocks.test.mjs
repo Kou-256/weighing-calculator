@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats, resolveStockForm, preparationError } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats, resolveStockForm, preparationError, preparationSummary } from "../src/lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../src/lib/reagent-presets.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
@@ -174,4 +174,30 @@ test("automatic preparation requires real final-volume confirmation; legacy meth
   assert.equal(resolveStockForm(manual),manual);assert.equal(preparationError(manual),"");
   const old=stock();assert.equal(resolveStockForm(old),old);assert.equal(preparationError(old),"");
   assert.ok(validateBackup({schema:1,stocks:[old],records:[]}));
+});
+test("preparation conclusion never invents an initial acid volume",()=>{
+  const f=designForm({massG:"",designMode:"target",volumeMode:"batch",batchCount:"200"});
+  const p=preparationSummary(f);close(p.massG,.0141);close(p.finalMl,100);
+  assert.equal(p.initialMl,null);assert.equal(p.ready,false);assert.match(p.acidError,/未確定/);
+  const specified=preparationSummary({...f,initialAcidMl:"10"});
+  close(specified.initialMl,10);assert.equal(specified.ready,true);
+});
+test("conclusion keeps planned initial acid separate from recorded acid and preserves actual mass",()=>{
+  const f=designForm({massG:"0.01407672",acidAmount:"2",initialAcidMl:"10"});
+  const p=preparationSummary(f);close(p.massG,.01407672);assert.equal(p.massBasis,"actual");close(p.initialMl,10);
+  close(Number(f.acidAmount),2);
+  close(preparationSummary({...f,initialAcidMl:undefined,acidAmount:"13.8",acidUnit:"g"}).initialMl,10);
+  assert.equal(preparationSummary({...f,initialAcidMl:""}).initialMl,null);
+});
+test("conclusion recalculates a user-specified factor for the selected weighing basis",()=>{
+  const f=designForm({initialAcidMode:"factor",acidMultiplier:"10"});
+  close(preparationSummary(f).initialMl,acidRequirement(f,10).ml);
+  close(preparationSummary({...f,massG:"0.0141"}).initialMl,acidRequirement({...f,massG:"0.0141"},10).ml);
+  assert.equal(preparationSummary({...f,acidMultiplier:""}).ready,false);
+});
+test("conclusion warns about insufficient formal acid and incompatible preparation volume",()=>{
+  const f=designForm();
+  assert.match(preparationSummary({...f,initialAcidMl:"0.0001"}).warning,/理論必要量/);
+  assert.match(preparationSummary({...f,initialAcidMl:"100"}).warning,/目標体積以上/);
+  assert.equal(preparationSummary({...f,massG:"-1"}).ready,false);
 });

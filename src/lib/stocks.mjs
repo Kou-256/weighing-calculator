@@ -106,6 +106,27 @@ export function balanceMass(massG) {
   if(!Number.isFinite(Number(massG)) || Number(massG)<=0) return NaN;
   return Math.round(Number(massG)*10000)/10000;
 }
+export function preparationSummary(input) {
+  const form=resolveStockForm(input), design=stockDesign(form);
+  const hasActual=form.massG!=="" && form.massG!=null;
+  const massG=hasActual?Number(form.massG):balanceMass(design.massG);
+  const finalMl=Number(form.finalMl);
+  if(!Number.isFinite(massG)||massG<=0||!Number.isFinite(finalMl)||finalMl<=0) return {error:"秤量値・調製条件を確認してください。",ready:false};
+  const stock={...form,name:form.name?.trim()||"調製計画",massG:String(massG)};
+  if(stockError(stock)) return {error:"試薬特性・秤量値の入力を確認してください。",ready:false};
+  const mode=form.initialAcidMode||"volume";
+  if(!["volume","factor"].includes(mode)) return {error:"初期硝酸量の指定方法を確認してください。",ready:false};
+  const factorPlan=mode==="factor"?acidRequirement(stock,form.acidMultiplier):null;
+  const recordedMl=form.acidUnit==="g"?Number(form.acidAmount)/Number(form.acidDensity):Number(form.acidAmount);
+  const entered=form.initialAcidMl??(Number.isFinite(recordedMl)&&recordedMl>0?String(recordedMl):"");
+  const initialMl=mode==="factor"?(factorPlan.error?NaN:factorPlan.ml):Number(entered);
+  const acidError=mode==="factor"?factorPlan.error||"":!Number.isFinite(initialMl)||initialMl<=0?"初期硝酸量が未確定です。確認済みの量を指定してください。":"";
+  const theoretical=acidRequirement(stock);
+  let warning="";
+  if(!acidError&&initialMl>=finalMl) warning="初期投入量が仕上がりの目標体積以上です。調製条件・体積設計を確認してください。";
+  else if(!acidError&&!theoretical.error&&initialMl<theoretical.ml-1e-12) warning="指定した初期硝酸量は反応式上の理論必要量を下回ります。条件を確認してください。";
+  return {massG,finalMl,initialMl:Number.isFinite(initialMl)&&initialMl>0?initialMl:null,massBasis:hasActual?"actual":"rounded",acidSource:mode,acidError,warning,ready:!acidError&&!warning};
+}
 // Formal stoichiometry only. No empirical dissolution excess is inferred.
 export function acidRequirement(stock, multiplier=1) {
   const theoretical=acidInfo(stock).theoretical, factor=Number(multiplier);

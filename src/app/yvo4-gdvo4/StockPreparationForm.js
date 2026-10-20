@@ -5,6 +5,7 @@ import { STOCK_OXIDES, oxideById, stockMolarMass, stockDesign, targetDose, balan
 import { NITRIC_ACID, nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
 import { ConcentrationSeries, AcidPlanning } from "./StockPlanningTools";
 import PreparationGuide from "./PreparationGuide";
+import PreparationConclusion from "./PreparationConclusion";
 
 export default function StockPreparationForm({form,setForm}) {
   const [toast,setToast]=useState(null);
@@ -87,8 +88,9 @@ export default function StockPreparationForm({form,setForm}) {
       {form.designMode==="target"&&form.volumeMode==="batch"&&<div className="stock-computed-volume"><span>アプリが計算：定容する目標体積</span><output aria-label="定容する目標体積">{form.finalMl?`${pretty(Number(form.finalMl))} mL`:"条件を入力してください"}</output><p>{form.designAliquotMl||"—"} mL／回 × {form.batchCount||"—"}回 = {form.finalMl||"—"} mL。最初に加える硝酸の量ではなく、冷却後に溶液全体を合わせる体積です。</p></div>}
       {form.designMode==="target"&&form.volumeMode==="batch"&&<p className="stock-caption">回数は指定した目標mol%での調製規模の目安です。別の濃度で使う場合や秤量値を丸めた場合は、分取量・使える回数が変わります。</p>}
       <p className="stock-caption">mol%は、合成の基準モル数に対する{oxide.element}原子の物質量の割合です（酸化物の質量%ではありません）。定容には選択した硝酸を使用。複数ストックを併用するときは、合計の分取量に上限を適用します。</p>
+      {(form.designMode==="target"&&!design.error || form.designMode!=="target"&&Number(form.massG)>0)&&<PreparationConclusion form={form} onChange={update}/>}
       {form.designMode==="target"&&(design.error?<p className="stock-warning" role="alert">{design.error}</p>:<div className="stock-preview stock-design-result">
-        <dl className="stock-metrics"><div><dt>酸化物の推奨秤量値</dt><dd>{pretty(design.massG,8)} g</dd></div><div><dt>設計した金属濃度</dt><dd>{pretty(design.concentration*1000)} mmol/L</dd></div><div><dt>このストックの分取量</dt><dd>{form.designAliquotMl} mL</dd></div><div><dt>他のストックを使わない場合の追加硝酸</dt><dd>{pretty(design.limitMl-Number(form.designAliquotMl))} mL</dd></div></dl>
+        <details className="stock-details"><summary>理論値・合成1回あたりの分取条件</summary><dl className="stock-metrics"><div><dt>酸化物の推奨秤量値</dt><dd>{pretty(design.massG,8)} g</dd></div><div><dt>設計した金属濃度</dt><dd>{pretty(design.concentration*1000)} mmol/L</dd></div><div><dt>このストックの分取量</dt><dd>{form.designAliquotMl} mL</dd></div><div><dt>他のストックを使わない場合の追加硝酸</dt><dd>{pretty(design.limitMl-Number(form.designAliquotMl))} mL</dd></div></dl></details>
         <div className="stock-balance-mass"><span>天秤の表示刻み 0.1 mg（0.0001 g）に丸めた目安</span><strong>{roundedMass.toFixed(4)} g</strong><small>理論値との差 {pretty((roundedMass/design.massG-1)*100,4)}%。最低秤量量や精度を保証する値ではありません。</small></div>
         <button type="button" className="secondary-button" disabled={roundedMass<=0} onClick={()=>transfer({massG:roundedMass.toFixed(4)},`${roundedMass.toFixed(4)} gを実秤量欄へ転記しました。実際に量った値を確認してください。`)}>0.1 mg刻みの目安を実秤量欄へ転記</button>
         <p className="stock-caption">転記後は、実際に天秤で量った値へ修正してください。天秤の最小表示0.0001 gと最低秤量量は異なります。</p>

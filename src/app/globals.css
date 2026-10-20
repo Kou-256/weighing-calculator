@@ -903,6 +903,14 @@ footer a:hover { text-decoration: underline; }
 .stock-balance-mass { display: grid; gap: 7px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .stock-balance-mass span, .stock-balance-mass small { font-size: .8rem; color: var(--muted); }
 .stock-balance-mass strong { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.preparation-conclusion { display: grid; gap: 14px; min-width: 0; padding: 18px; border: 2px solid var(--accent); border-radius: var(--radius-md); background: var(--surface); }
+.conclusion-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.conclusion-steps li { display: grid; gap: 5px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.conclusion-steps li > span { font-size: .84rem; font-weight: 500; }
+.conclusion-steps strong { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.conclusion-steps small { color: var(--muted); font-size: .78rem; line-height: 1.6; }
+.conclusion-acid-setting { display: grid; gap: 12px; }
+.conclusion-sentence { padding: 12px; margin: 0; border-radius: 10px; background: var(--accent-soft); font-size: .9rem; font-weight: 600; line-height: 1.8; }
 .preparation-guide { display: grid; gap: 14px; padding: 18px; border-radius: var(--radius-md); background: var(--accent-soft); }
 .preparation-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
 .preparation-steps button { display: grid; justify-items: center; gap: 8px; padding: 10px 4px; min-width: 0; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--muted); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
