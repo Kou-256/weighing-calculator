@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats, resolveStockForm, preparationError, preparationSummary } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, minimumStockPlan, targetDose, stockMolarMass, balanceMass, acidRequirement, aliquotRepeats, resolveStockForm, preparationError, preparationSummary } from "../src/lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../src/lib/reagent-presets.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
@@ -217,4 +217,56 @@ test("initial acid and requested aliquot count plan without a literature loading
   // A different aliquot changes volume, but not the total metal required for 200 syntheses.
   const bigger=resolveStockForm({...input,designAliquotMl:"1"});
   close(Number(bigger.finalMl),200);close(stockDesign(bigger).massG,design.massG);
+});
+
+const minimumForm=(patch={})=>designForm({massG:"",designMode:"target",volumeMode:"minimum",batchCount:"100",initialAcidMl:"50",...patch});
+test("minimum-count design keeps 50 mL acid fixed and rounds Eu mass upward",()=>{
+  const f=minimumForm(), p=minimumStockPlan(f);
+  assert.equal(p.error,"");assert.equal(p.warning,"");close(p.requiredMassG,.00703836);
+  close(p.recommendedMassG,.0071);close(p.finalMl,50.437886098466116);
+  assert.equal(p.fullCount,100);close(p.remainderMl,.437886098466116);
+  assert.equal(f.initialAcidMl,"50");assert.equal(f.massG,"");
+  const resolved=resolveStockForm(f), summary=preparationSummary(resolved);
+  close(Number(resolved.finalMl),p.finalMl);close(summary.massG,.0071);assert.equal(summary.ready,true);
+  assert.equal(summary.fullCount,100);close(summary.initialMl,50);
+  close(targetDose({...resolved,name:"Eu",massG:"0.0071",status:"clear"},.004,.01).idealMl,.5);
+});
+test("minimum-count final volume follows actual mass without silently correcting it",()=>{
+  const f=minimumForm({massG:"0.0072"}), p=minimumStockPlan(f);
+  close(p.massG,.0072);close(p.finalMl,.0072/.0071*50.437886098466116);
+  close(Number(resolveStockForm(f).finalMl),p.finalMl);close(preparationSummary(f).massG,.0072);
+  assert.equal(preparationSummary(f).massBasis,"actual");
+  const insufficient=minimumForm({massG:"0.0070",finalVolumeConfirmed:true});
+  close(Number(resolveStockForm(insufficient).finalMl),49.72749333651589);
+  assert.match(preparationError(insufficient),/初期硝酸量以下/);
+  assert.equal(preparationSummary(insufficient).ready,false);assert.equal(insufficient.massG,"0.0070");
+  assert.match(preparationError(minimumForm({initialAcidMl:"1",massG:"0.0070",finalVolumeConfirmed:true})),/指定回数/);
+});
+test("minimum-count design handles acid-dominant, count-dominant and exact-step boundaries",()=>{
+  for(const initialAcidMl of ["1","50","60","100"]){
+    for(const batchCount of ["1","100","200"]){
+      const f=minimumForm({initialAcidMl,batchCount}),p=minimumStockPlan(f);
+      assert.equal(p.error,"");assert.equal(p.warning,"");assert.ok(p.finalMl>Number(initialAcidMl));
+      assert.ok(p.fullCount>=Number(batchCount));
+      close(p.recommendedMassG*10000,Math.round(p.recommendedMassG*10000));
+      const less=minimumStockPlan({...f,massG:String(p.recommendedMassG-.0001)});
+      assert.ok(less.error||less.warning,"one lower balance increment must fail a constraint");
+    }
+  }
+  const base=minimumStockPlan(minimumForm());
+  const equal=minimumStockPlan(minimumForm({initialAcidMl:String(base.finalMl)}));
+  assert.ok(equal.recommendedMassG>base.recommendedMassG);assert.ok(equal.finalMl>base.finalMl);
+  const assay=minimumStockPlan(minimumForm({initialAcidMl:"1",purity:"99"}));
+  close(assay.requiredMassG,.00703836/.99);
+});
+test("minimum-count input validation, final-volume confirmation and backup compatibility",()=>{
+  for(const patch of [{initialAcidMl:""},{initialAcidMl:"0"},{initialAcidMl:"Infinity"},{batchCount:"2.5"},{massG:"-1"},{massG:"NaN"},{designAliquotMl:"6"},{initialAcidMode:"factor"},{oxideId:"Y2O3"}]){
+    assert.ok(minimumStockPlan(minimumForm(patch)).error);assert.ok(preparationError(minimumForm(patch)));
+  }
+  assert.match(preparationError(minimumForm()),/定容/);
+  assert.equal(preparationError(minimumForm({finalVolumeConfirmed:true})),"");
+  const f=resolveStockForm(minimumForm({massG:"0.0071"}));
+  assert.ok(validateBackup({schema:1,stocks:[f],records:[]}));
+  const larger=minimumStockPlan(minimumForm({initialAcidMl:"60"}));
+  assert.ok(larger.recommendedMassG>.0071);assert.ok(larger.finalMl>60);
 });

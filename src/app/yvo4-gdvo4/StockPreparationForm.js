@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { STOCK_OXIDES, oxideById, stockMolarMass, stockDesign, targetDose, balanceMass, pretty, acidInfo, concentration } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, oxideById, stockMolarMass, stockDesign, minimumStockPlan, targetDose, balanceMass, pretty, acidInfo, concentration } from "../../lib/stocks.mjs";
 import { NITRIC_ACID, nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
 import { ConcentrationSeries, AcidPlanning } from "./StockPlanningTools";
 import PreparationGuide from "./PreparationGuide";
@@ -10,18 +10,22 @@ import PreparationConclusion from "./PreparationConclusion";
 export default function StockPreparationForm({form,setForm}) {
   const [toast,setToast]=useState(null);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(null),4500);return ()=>clearTimeout(timer);},[toast]);
-  const update=patch=>setForm(old=>({...old,...patch,...(Object.keys(patch).some(key=>["batchCount","designAliquotMl","designMol","designPercent","oxideId","massG","purity","productMolarMass","volumeMode","finalMl","designMode"].includes(key))?{finalVolumeConfirmed:false}:{})}));
+  const update=patch=>setForm(old=>({...old,...patch,...(Object.keys(patch).some(key=>["batchCount","designAliquotMl","designMol","designPercent","oxideId","massG","purity","productMolarMass","volumeMode","finalMl","designMode","initialAcidMl","initialAcidMode","acidAmount","acidUnit","acidDensity"].includes(key))?{finalVolumeConfirmed:false}:{})}));
   const transfer=(patch,message)=>{update(patch);setToast({message,id:Date.now()});};
   const field=(key,label,props={})=><label className="stock-field">{label}<input {...props} aria-label={label} value={form[key]??""} onChange={e=>update({[key]:e.target.value})}/></label>;
   const num={type:"number",min:"0",step:"any"};
-  const oxide=oxideById(form.oxideId), design=stockDesign(form);
+  const minimum=form.designMode==="target"&&form.volumeMode==="minimum";
+  const automatic=form.designMode==="target"&&["batch","minimum"].includes(form.volumeMode);
+  const minimumPlan=minimum?minimumStockPlan(form):null;
+  const oxide=oxideById(form.oxideId), design=minimum?(minimumPlan.error?{error:minimumPlan.error}:{...minimumPlan.design,massG:minimumPlan.requiredMassG}):stockDesign(form);
   // The provisional name only allows a preview before the final naming step.
   const preview={...form,name:form.name.trim()||"調製中"};
   const c=concentration(preview), acid=acidInfo(preview);
   const dose=targetDose(preview,form.designMol,form.designPercent);
   const acidMl=form.acidUnit==="g" ? Number(form.acidAmount)/Number(form.acidDensity) : Number(form.acidAmount);
-  const roundedMass=balanceMass(design.massG);
-  const plannedStock={...preview,massG:String(form.planningMassBasis==="theoretical"?design.massG:roundedMass)};
+  const roundedMass=minimum?minimumPlan.recommendedMassG:balanceMass(design.massG);
+  const planningMass=form.planningMassBasis==="theoretical"?design.massG:roundedMass;
+  const plannedStock={...preview,massG:String(planningMass),...(minimum&&!minimumPlan.error?{finalMl:String(planningMass*minimumPlan.mlPerGram)}:{})};
   return <>
     <PreparationGuide/>
     <div className="stock-toast-region" aria-live="polite" aria-atomic="true">{toast&&<div className="stock-toast" key={toast.id} role="status"><span aria-hidden="true">✓</span><span>{toast.message}</span><button type="button" aria-label="通知を閉じる" onClick={()=>setToast(null)}>×</button></div>}</div>
@@ -32,9 +36,10 @@ export default function StockPreparationForm({form,setForm}) {
       </select></label>
       <p className="stock-caption">{form.acidMode==="weight"?`${form.acidPercent} w/w%` : form.acidMode==="molar"?`${form.acidMolarity} mol/L`:"60–61%"} · 密度 {form.acidDensity||"未設定"} g/mL。製品の値を初期入力しています。</p>
       {(form.initialAcidMode||"volume")==="volume"&&<label className="stock-field">最初に使う硝酸量（mL）<input aria-label="最初に使う硝酸量（mL）" type="number" min="0" step="any" placeholder="使用する量を指定" value={form.initialAcidMl??(acidMl>0&&Number.isFinite(acidMl)?String(acidMl):"")} onChange={e=>update({initialAcidMl:e.target.value})}/></label>}
-      <p className="stock-caption">これはあなたが決める初期投入量です。秤量値と最終体積は、下の分取回数・目標mol%・1回の分取量から計算します。文献の溶解比率は使いません。</p>
+      <p className="stock-caption">{minimum?"この初期投入量は変更しません。指定回数以上を確保し、最終体積が初期硝酸量より大きくなるよう秤量目安を切り上げます。":"これはあなたが決める初期投入量です。"} 文献の溶解比率は使いません。溶解可否は別途確認してください。</p>
       <details className="stock-details"><summary>初期硝酸量の指定方法を変更（従来の倍率計算）</summary>
-        <label className="stock-field">初期硝酸量の指定方法<select aria-label="初期硝酸量の指定方法" value={form.initialAcidMode||"volume"} onChange={e=>update({initialAcidMode:e.target.value})}><option value="volume">使う量をmLで指定</option><option value="factor">理論必要量 × 確認済みの倍率</option></select></label>
+        <label className="stock-field">初期硝酸量の指定方法<select aria-label="初期硝酸量の指定方法" value={form.initialAcidMode||"volume"} onChange={e=>update({initialAcidMode:e.target.value,...(minimum&&e.target.value==="factor"?{volumeMode:"batch"}:{})})}><option value="volume">使う量をmLで指定</option><option value="factor">理論必要量 × 確認済みの倍率</option></select></label>
+        <p className="stock-caption">倍率から初期量を求める場合は、従来の回数固定方式に切り替わります。</p>
         {form.initialAcidMode==="factor"&&field("acidMultiplier","初期硝酸の計画倍率",{type:"number",min:"1",step:"any",placeholder:"実験で確認済みの倍率"})}
       </details>
       <details className="stock-details"><summary>硝酸の特性・最初に投入した量の記録（任意）</summary>
@@ -82,27 +87,29 @@ export default function StockPreparationForm({form,setForm}) {
       <h4 id="stock-step-design"><span>3</span> 分取回数を決めて、秤量値と最終体積を計算</h4>
       <details className="stock-details"><summary>計算方法・従来の入力方法を変更</summary>
       <label className="stock-field">登録方法<select aria-label="登録方法" value={form.designMode||"mass"} onChange={e=>update({designMode:e.target.value,finalMl:form.finalMl})}><option value="target">目標mol%と分取量から秤量値を計算</option><option value="mass">既知の実秤量値から登録（従来の方法）</option></select></label>
-      {form.designMode==="target"&&<label className="stock-field">体積の決め方<select aria-label="体積の決め方" value={form.volumeMode||"manual"} onChange={e=>update({volumeMode:e.target.value,finalMl:form.finalMl})}><option value="batch">作る回数から自動計算</option><option value="manual">最終定容体積を指定（従来の方法）</option></select></label>}
+      {form.designMode==="target"&&<label className="stock-field">体積の決め方<select aria-label="体積の決め方" value={form.volumeMode||"manual"} onChange={e=>update({volumeMode:e.target.value,finalMl:form.finalMl,...(e.target.value==="minimum"?{initialAcidMode:"volume"}:{})})}><option value="minimum">初期硝酸量を固定し、指定回数以上を確保</option><option value="batch">回数 × 分取量で体積固定（従来の方法）</option><option value="manual">最終定容体積を指定（従来の方法）</option></select></label>}
       </details>
       <p className="stock-caption">入力する条件（初期硝酸量は手順1）</p>
       <div className="stock-form-grid">
-        {form.designMode==="target"&&form.volumeMode==="batch"&&field("batchCount","分取できる回数（回）",{type:"number",min:"1",max:"1000000",step:"1",required:true})}
+        {automatic&&field("batchCount",minimum?"確保したい分取回数（回以上）":"分取できる回数（回）",{type:"number",min:"1",max:"1000000",step:"1",required:true})}
         {field("designMol","合成の基準モル数（mol）",{...num,required:form.designMode==="target"})}
         {field("designPercent",`目標${oxide.element}濃度（mol%）`,{...num,max:"100",required:form.designMode==="target"})}
         {form.designMode==="target"&&field("designAliquotMl","目標濃度にするストック分取量（mL）",{...num,required:true})}
-        {!(form.designMode==="target"&&form.volumeMode==="batch")&&field("finalMl","冷却後の最終定容体積（mL）",{...num,required:true,placeholder:"例：100"})}
+        {!automatic&&field("finalMl","冷却後の最終定容体積（mL）",{...num,required:true,placeholder:"例：100"})}
       </div>
       {form.designMode==="target"&&form.volumeMode==="batch"&&<div className="stock-computed-volume"><span>アプリが計算：定容する目標体積</span><output aria-label="定容する目標体積">{form.finalMl?`${pretty(Number(form.finalMl))} mL`:"条件を入力してください"}</output><p>{form.designAliquotMl||"—"} mL／回 × {form.batchCount||"—"}回 = {form.finalMl||"—"} mL。最初に加える硝酸の量ではなく、冷却後に溶液全体を合わせる体積です。</p></div>}
       {form.designMode==="target"&&form.volumeMode==="batch"&&<p className="stock-caption">回数は指定した目標mol%での調製規模の目安です。別の濃度で使う場合や秤量値を丸めた場合は、分取量・使える回数が変わります。</p>}
+      {minimum&&!minimumPlan.error&&<div className="stock-computed-volume"><span>秤量値から自動計算：冷却後に合わせる全体量</span><output aria-label="定容する目標体積">{pretty(minimumPlan.finalMl)} mL</output><p>{pretty(minimumPlan.massG,8)} gから逆算。1回 {form.designAliquotMl} mLで {minimumPlan.fullCount}回分取でき、約{pretty(minimumPlan.remainderMl)} mL残ります（移送・ピペット損失を除く理論値）。</p><p>この細かな体積に定容できる器具・方法を確認してください。表示は丸めていますが、計算には丸め前の体積を使用します。</p></div>}
+      {minimum&&<details className="stock-details"><summary>入力と計算結果の関係</summary><p>指定回数に必要な質量と、固定した初期硝酸量より大きい最終体積になる質量を比較し、両方を満たす0.0001 g刻みの秤量目安を求めます。</p><p>最終体積 = 秤量値 × 酸化物含量 ÷ モル質量 × 金属原子数 ÷ 目標ストック金属濃度 × 1000。実秤量値を入力した後は、その値から体積を再計算します。初期硝酸量は自動変更しません。</p></details>}
       {form.designMode==="target"&&form.volumeMode==="batch"&&<details className="stock-details"><summary>入力と計算結果の関係</summary><p>最終体積 = 1回の分取量 × 分取回数。酸化物の理論秤量値 = 合成モル数 × 目標mol% ÷ 100 × 分取回数 ÷ 酸化物中の金属原子数 × モル質量（必要なら含量補正）。初期硝酸量を変えても、この2つの計算結果は変わりません。</p></details>}
       <p className="stock-caption">mol%は、合成の基準モル数に対する{oxide.element}原子の物質量の割合です（酸化物の質量%ではありません）。定容には選択した硝酸を使用。複数ストックを併用するときは、合計の分取量に上限を適用します。</p>
       {(form.designMode==="target"&&!design.error || form.designMode!=="target"&&Number(form.massG)>0)&&<PreparationConclusion form={form}/>}
       {form.designMode==="target"&&(design.error?<p className="stock-warning" role="alert">{design.error}</p>:<div className="stock-preview stock-design-result">
         <details className="stock-details"><summary>理論値・合成1回あたりの分取条件</summary><dl className="stock-metrics"><div><dt>酸化物の推奨秤量値</dt><dd>{pretty(design.massG,8)} g</dd></div><div><dt>設計した金属濃度</dt><dd>{pretty(design.concentration*1000)} mmol/L</dd></div><div><dt>このストックの分取量</dt><dd>{form.designAliquotMl} mL</dd></div><div><dt>他のストックを使わない場合の追加硝酸</dt><dd>{pretty(design.limitMl-Number(form.designAliquotMl))} mL</dd></div></dl></details>
-        <div className="stock-balance-mass"><span>天秤の表示刻み 0.1 mg（0.0001 g）に丸めた目安</span><strong>{roundedMass.toFixed(4)} g</strong><small>理論値との差 {pretty((roundedMass/design.massG-1)*100,4)}%。最低秤量量や精度を保証する値ではありません。</small></div>
+        <div className="stock-balance-mass"><span>{minimum?"初期硝酸量を固定・指定回数以上を確保する0.1 mg刻みの秤量目安":"天秤の表示刻み 0.1 mg（0.0001 g）に丸めた目安"}</span><strong>{roundedMass.toFixed(4)} g</strong><small>{minimum?"条件を満たすよう切り上げています。":""}理論値との差 {pretty((roundedMass/design.massG-1)*100,4)}%。最低秤量量や精度を保証する値ではありません。</small></div>
         <button type="button" className="secondary-button" disabled={roundedMass<=0} onClick={()=>transfer({massG:roundedMass.toFixed(4)},`${roundedMass.toFixed(4)} gを実秤量欄へ転記しました。実際に量った値を確認してください。`)}>0.1 mg刻みの目安を実秤量欄へ転記</button>
         <p className="stock-caption">転記後は、実際に天秤で量った値へ修正してください。天秤の最小表示0.0001 gと最低秤量量は異なります。</p>
-        <details className="stock-details"><summary>推奨秤量値の計算過程・理論値の転記</summary><p>必要な{oxide.element} = {form.designMol} mol × {form.designPercent} ÷ 100 = {pretty(design.requiredMol)} mol</p><p>ストック金属濃度 = {pretty(design.requiredMol)} mol ÷ ({form.designAliquotMl} mL ÷ 1000) = {pretty(design.concentration)} mol/L</p><p>酸化物秤量値 = {pretty(design.concentration)} mol/L × ({form.finalMl} mL ÷ 1000) ÷ 金属原子数{oxide.metalAtoms} × {pretty(stockMolarMass(form))} g/mol ÷ {form.purity?`(${form.purity} ÷ 100)` : "1（含量補正なし）"} = {pretty(design.massG,8)} g</p><button type="button" className="secondary-button" onClick={()=>transfer({massG:design.massG.toPrecision(12)},"理論上の秤量値を転記しました。天秤の実秤量値に修正してください。")}>計算値を実秤量欄へ転記</button></details>
+        <details className="stock-details"><summary>推奨秤量値の計算過程・理論値の転記</summary><p>必要な{oxide.element} = {form.designMol} mol × {form.designPercent} ÷ 100 = {pretty(design.requiredMol)} mol</p><p>ストック金属濃度 = {pretty(design.requiredMol)} mol ÷ ({form.designAliquotMl} mL ÷ 1000) = {pretty(design.concentration)} mol/L</p><p>酸化物秤量値 = {pretty(design.concentration)} mol/L × ({minimum?pretty(Number(form.batchCount)*Number(form.designAliquotMl)):form.finalMl} mL ÷ 1000) ÷ 金属原子数{oxide.metalAtoms} × {pretty(stockMolarMass(form))} g/mol ÷ {form.purity?`(${form.purity} ÷ 100)` : "1（含量補正なし）"} = {pretty(design.massG,8)} g</p>{minimum&&<p>これは指定回数分だけの理論値です。初期硝酸量に対する条件は含まないため、転記後に警告が出る場合があります。</p>}<button type="button" className="secondary-button" onClick={()=>transfer({massG:design.massG.toPrecision(12)},"理論上の秤量値を転記しました。天秤の実秤量値に修正してください。")}>計算値を実秤量欄へ転記</button></details>
       </div>)}
       {form.designMode==="target"&&!design.error&&<>
         <details className="stock-details"><summary>調製前の濃度一覧・硝酸投入量の補助計算</summary>
@@ -119,8 +126,9 @@ export default function StockPreparationForm({form,setForm}) {
     <section className="stock-step" aria-labelledby="stock-step-measured">
       <h4 id="stock-step-measured"><span>4</span> 実秤量値から分取量を確定</h4>
       {field("massG","酸化物の実秤量値（g）",{...num,required:true,placeholder:"実際に量った値"})}
-      <p className="stock-caption">設計値と実秤量値は分けて扱います。保存・組成計算には、この実秤量値と冷却後の最終定容体積を使います。</p>
-      {form.designMode==="target"&&form.volumeMode==="batch"&&<label className="stock-volume-confirm"><input type="checkbox" checked={Boolean(form.finalVolumeConfirmed)} onChange={e=>update({finalVolumeConfirmed:e.target.checked})}/><span>冷却後、選んだ硝酸で溶液全体を{form.finalMl||"計算された目標"} mLに定容したことを確認しました。</span></label>}
+      <p className="stock-caption">設計値と実秤量値は分けて扱います。{minimum?"実秤量値の変更に合わせて、最終定容体積を再計算します。定容前に値を確定してください。":""}保存・組成計算には、この実秤量値と冷却後の最終定容体積を使います。</p>
+      {automatic&&<label className="stock-volume-confirm"><input type="checkbox" checked={Boolean(form.finalVolumeConfirmed)} onChange={e=>update({finalVolumeConfirmed:e.target.checked})}/><span>冷却後、選んだ硝酸で溶液全体を{form.finalMl?pretty(Number(form.finalMl)):"計算された目標"} mLに定容したことを確認しました。</span></label>}
+      {minimum&&minimumPlan.warning&&<p className="stock-warning" role="alert">{minimumPlan.warning}</p>}
       {Number.isFinite(c)&&<>
         <p className="stock-delivered">{oxide.element}濃度：{pretty(c*1000)} mmol/L。目標 {form.designPercent} mol%の理論分取量：{pretty(dose.idealMl)} mL。</p>
         {dose.error?<p className="stock-warning" role="alert">{dose.error}</p>:<p className="stock-success">ピペット設定 {pretty(dose.settingMl)} mL ＋ 追加硝酸 {pretty(dose.additionalMl)} mL。設定後の{oxide.element}濃度 {pretty(dose.actualPercent)} mol%（他のストックなしの場合）。</p>}

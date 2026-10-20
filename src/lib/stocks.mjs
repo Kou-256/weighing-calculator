@@ -26,13 +26,50 @@ export const PIPETTES = [
 ];
 export const oxideById = id => OXIDES.find(x=>x.id===id);
 export const stockMolarMass = stock => stock.productMolarMass!=="" && stock.productMolarMass!=null ? Number(stock.productMolarMass) : oxideById(stock.oxideId)?.molarMass;
+// Minimum-count design: keep the initial acid fixed; round only the proposed mass up.
+// The final volume is a concentration target, not a prediction of the liquid's physical volume.
+export function minimumStockPlan(form) {
+  const count=Number(form.batchCount), aliquot=Number(form.designAliquotMl);
+  if(!Number.isInteger(count)||count<1||count>1000000) return {error:"分取回数は1〜1000000の整数で指定してください。"};
+  const design=stockDesign({...form,finalMl:String(count*aliquot)});
+  if(design.error) return {error:design.error};
+  if((form.initialAcidMode||"volume")!=="volume") return {error:"指定回数以上を確保する方式では、初期硝酸量をmLで指定してください。"};
+  const recordedMl=form.acidUnit==="g"?Number(form.acidAmount)/Number(form.acidDensity):Number(form.acidAmount);
+  const initialMl=Number(form.initialAcidMl??(recordedMl>0&&Number.isFinite(recordedMl)?recordedMl:""));
+  if(!Number.isFinite(initialMl)||initialMl<=0) return {error:"手順1で、固定する初期硝酸量（mL）を入力してください。"};
+  const mlPerGram=count*aliquot/design.massG;
+  const acidTicks=initialMl/mlPerGram*10000;
+  const countTicks=design.massG*10000;
+  // Equality with the initial acid volume is intentionally excluded; leave room for make-up.
+  const ticks=Math.max(Math.ceil(countTicks-1e-9),Math.floor(acidTicks)+1);
+  if(!Number.isSafeInteger(ticks)||ticks<=0||!Number.isFinite(mlPerGram)||mlPerGram<=0) return {error:"計算可能な範囲を超えています。桁数を確認してください。"};
+  const recommendedMassG=ticks/10000;
+  const hasActual=form.massG!==""&&form.massG!=null;
+  const massG=hasActual?Number(form.massG):recommendedMassG;
+  const finalMl=massG*mlPerGram;
+  if(!Number.isFinite(massG)||massG<=0||!Number.isFinite(finalMl)||finalMl<=0) return {error:"実秤量値は0より大きい有限の値を入力してください。"};
+  const fullCount=Math.floor(finalMl/aliquot+1e-9);
+  if(!Number.isSafeInteger(fullCount)) return {error:"分取回数が計算可能な範囲を超えています。"};
+  const remainderMl=Math.max(0,finalMl-fullCount*aliquot);
+  const warning=finalMl<=initialMl?"実秤量値から求めた最終体積が初期硝酸量以下です。硝酸の追加だけでは定容できません。質量・調製計画を確認してください。":fullCount<count?"実秤量値では指定回数を確保できません。質量・調製計画を確認してください。":"";
+  return {error:"",warning,initialMl,requiredMassG:design.massG,recommendedMassG,massG,finalMl,mlPerGram,fullCount,remainderMl,requestedCount:count,design};
+}
 export function resolveStockForm(form) {
+  if(form.volumeMode==="minimum"&&form.designMode==="target") {
+    const plan=minimumStockPlan(form);
+    return {...form,finalMl:plan.error?"":String(plan.finalMl)};
+  }
   if(form.volumeMode!=="batch" || form.designMode!=="target") return form;
   const count=Number(form.batchCount), aliquot=Number(form.designAliquotMl);
   const finalMl=Number.isInteger(count)&&count>=1&&count<=1000000&&Number.isFinite(aliquot)&&aliquot>0 ? count*aliquot : NaN;
   return {...form,finalMl:Number.isFinite(finalMl)&&finalMl>0?String(finalMl):""};
 }
 export function preparationError(form) {
+  if(form.volumeMode==="minimum"&&form.designMode==="target") {
+    const plan=minimumStockPlan(form);
+    if(plan.error||plan.warning) return plan.error||plan.warning;
+    if(!form.finalVolumeConfirmed) return "冷却後、実秤量値から計算した目標体積に定容したことを確認してください。";
+  }
   if(form.volumeMode==="batch"&&form.designMode==="target") {
     const count=Number(form.batchCount);
     if(!Number.isInteger(count)||count<1||count>1000000) return "作る回数は1〜1000000の整数で指定してください。";
@@ -108,8 +145,10 @@ export function balanceMass(massG) {
 }
 export function preparationSummary(input) {
   const form=resolveStockForm(input), design=stockDesign(form);
+  const minimum=form.volumeMode==="minimum"&&form.designMode==="target"?minimumStockPlan(form):null;
+  if(minimum?.error) return {error:minimum.error,ready:false};
   const hasActual=form.massG!=="" && form.massG!=null;
-  const massG=hasActual?Number(form.massG):balanceMass(design.massG);
+  const massG=hasActual?Number(form.massG):minimum?minimum.recommendedMassG:balanceMass(design.massG);
   const finalMl=Number(form.finalMl);
   if(!Number.isFinite(massG)||massG<=0||!Number.isFinite(finalMl)||finalMl<=0) return {error:"秤量値・調製条件を確認してください。",ready:false};
   const stock={...form,name:form.name?.trim()||"調製計画",massG:String(massG)};
@@ -122,10 +161,10 @@ export function preparationSummary(input) {
   const initialMl=mode==="factor"?(factorPlan.error?NaN:factorPlan.ml):Number(entered);
   const acidError=mode==="factor"?factorPlan.error||"":!Number.isFinite(initialMl)||initialMl<=0?"初期硝酸量が未確定です。確認済みの量を指定してください。":"";
   const theoretical=acidRequirement(stock);
-  let warning="";
+  let warning=minimum?.warning||"";
   if(!acidError&&initialMl>=finalMl) warning="初期投入量が仕上がりの目標体積以上です。調製条件・体積設計を確認してください。";
   else if(!acidError&&!theoretical.error&&initialMl<theoretical.ml-1e-12) warning="指定した初期硝酸量は反応式上の理論必要量を下回ります。条件を確認してください。";
-  return {massG,finalMl,initialMl:Number.isFinite(initialMl)&&initialMl>0?initialMl:null,massBasis:hasActual?"actual":"rounded",acidSource:mode,acidError,warning,ready:!acidError&&!warning};
+  return {massG,finalMl,initialMl:Number.isFinite(initialMl)&&initialMl>0?initialMl:null,massBasis:hasActual?"actual":"rounded",acidSource:mode,acidError,warning,ready:!acidError&&!warning,...(minimum?{fullCount:minimum.fullCount,remainderMl:minimum.remainderMl,requestedCount:minimum.requestedCount}:{})};
 }
 // Formal stoichiometry only. No empirical dissolution excess is inferred.
 export function acidRequirement(stock, multiplier=1) {

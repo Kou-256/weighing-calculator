@@ -10,8 +10,8 @@ const STEPS=[
 export default function PreparationGuide() {
   const [step,setStep]=useState(1);
   return <div className="preparation-guide">
-    <h4>入力：初期硝酸量と分取できる回数</h4>
-    <p className="stock-caption">合成量・目標mol%・1回の分取量を設定し、最初に使う硝酸量と分取回数を入力。アプリが酸化物の秤量値と、冷却後に同じ硝酸で合わせる全体量を計算します。</p>
+    <h4>初期硝酸量は固定、指定回数以上を確保</h4>
+    <p className="stock-caption">合成量・目標mol%・1回の分取量を設定し、最初に使う硝酸量と確保したい回数を入力。0.1 mg刻みで秤量目安を切り上げ、その質量から冷却後に同じ硝酸で合わせる全体量を逆算します。従来の体積固定方式も選べます。</p>
     <div className="preparation-steps" aria-label="ストック調製の図解">
       {STEPS.map((s,i)=><button key={s.title} type="button" aria-pressed={step===i} onClick={()=>setStep(i)}>
         <svg viewBox="0 0 100 100" aria-hidden="true" className={step===i?"is-playing":""}>

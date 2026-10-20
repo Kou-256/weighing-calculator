@@ -8,7 +8,7 @@ import StockPreparationForm from "./StockPreparationForm";
 const STORAGE="weighing_stocks_v1";
 const StockContext=React.createContext(null);
 const emptyData=()=>({schema:1,stocks:[],records:[],delivery:{},drafts:{}});
-const newForm=()=>({name:"",...oxidePreset("Eu2O3"),massG:"",finalMl:"100",volumeMode:"batch",batchCount:"200",finalVolumeConfirmed:false,designMode:"target",designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",...nitricPreset(),acidAmount:"",acidUnit:"ml",notes:""});
+const newForm=()=>({name:"",...oxidePreset("Eu2O3"),massG:"",finalMl:"100",volumeMode:"minimum",batchCount:"200",finalVolumeConfirmed:false,designMode:"target",designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",...nitricPreset(),acidAmount:"",acidUnit:"ml",notes:""});
 const revisionForm=stock=>({...newForm(),...Object.fromEntries(Object.keys(oxidePreset(stock.oxideId)).filter(key=>key!=="oxideId"&&key!=="purity").map(key=>[key,""])),...stock,volumeMode:stock.volumeMode||"manual",finalVolumeConfirmed:false,designMode:stock.designMode||"mass",acidProduct:stock.acidProduct||"manual",acidName:stock.acidName||"硝酸（従来記録）",name:`${stock.name}（新版）`});
 const uid=()=>crypto.randomUUID();
 
