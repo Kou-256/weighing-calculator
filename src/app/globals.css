@@ -895,6 +895,15 @@ footer a:hover { text-decoration: underline; }
 .workspace-tabs button { min-height: 44px; padding: 8px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
 .workspace-tabs button.is-active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
 .stock-workspace { display: grid; gap: 18px; }
+.stock-step { display: grid; gap: 14px; min-width: 0; padding: 18px 0; border-top: 1px solid var(--border); }
+.stock-step h4 { display: flex; align-items: center; gap: 9px; }
+.stock-step h4 > span { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); font-size: .8rem; }
+.stock-design-result { display: grid; gap: 14px; }
+.stock-series-wrap { max-width: 100%; overflow-x: auto; margin-top: 12px; }
+.stock-series { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
+.stock-series th, .stock-series td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.stock-series thead th { font-weight: 600; color: var(--muted); }
+.stock-series .stock-series-error { color: #8a4700; white-space: normal; min-width: 120px; }
 .stock-workspace h3 { margin: 0; font-size: 1.08rem; font-weight: 600; }
 .stock-workspace h4, .stock-budget h4 { margin: 0; font-size: .95rem; font-weight: 600; }
 .stock-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }

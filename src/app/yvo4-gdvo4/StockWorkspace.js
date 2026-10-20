@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
-import { STOCK_OXIDES, PIPETTES, oxideById, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, PIPETTES, oxideById, stockMolarMass, stockDesign, targetDose, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
+import { nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
+import StockPreparationForm from "./StockPreparationForm";
 
 const STORAGE="weighing_stocks_v1";
 const StockContext=React.createContext(null);
 const emptyData=()=>({schema:1,stocks:[],records:[],delivery:{},drafts:{}});
-const newForm=()=>({name:"",oxideId:"Bi2O3",massG:"",finalMl:"",purity:"",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",acidMode:"w60",acidAmount:"",acidUnit:"ml",acidDensity:"",acidMolarity:"",notes:""});
+const newForm=()=>({name:"",...oxidePreset("Eu2O3"),massG:"",finalMl:"100",designMode:"target",designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",date:new Date().toLocaleDateString("sv-SE"),lot:"",container:"",operator:"",status:"unknown",...nitricPreset(),acidAmount:"",acidUnit:"ml",notes:""});
+const revisionForm=stock=>({...newForm(),...Object.fromEntries(Object.keys(oxidePreset(stock.oxideId)).filter(key=>key!=="oxideId"&&key!=="purity").map(key=>[key,""])),...stock,designMode:stock.designMode||"mass",acidProduct:stock.acidProduct||"manual",acidName:stock.acidName||"硝酸（従来記録）",name:`${stock.name}（新版）`});
 const uid=()=>crypto.randomUUID();
 
 export function StockProvider({children}) {
@@ -57,8 +60,9 @@ export function stockLine(data,material,requiredMol,setNumber,targetMol,experime
   if(delivery.mode!=="stock")return null;
   const stock=data.stocks.find(s=>s.id===delivery.stockId);
   const plan=dosePlan(stock,requiredMol,delivery.pipette||"auto");
+  if(plan.idealUl/1000>5*Number(targetMol)/.004+1e-9) plan.error="理論分取量が添加液量の上限を超えています。濃いストックまたは粉末への切替が必要です。";
   if(stock && oxideById(stock.oxideId)?.element!==material.replace("₂O₃","")) plan.error="ストックの金属元素が試薬と一致しません。";
-  const signature=JSON.stringify([stock?.id,stock?.massG,stock?.finalMl,stock?.purity,requiredMol,Number(targetMol),plan.pipette?.id,experiment]);
+  const signature=JSON.stringify([stock?.id,stock?.massG,stock?.finalMl,stock?.purity,stock?.productMolarMass,requiredMol,Number(targetMol),plan.pipette?.id,experiment]);
   const key=`${setNumber}:${material}`;
   const draft=data.drafts[key]?.signature===signature ? data.drafts[key] : null;
   const entered=draft?.value;
@@ -119,7 +123,7 @@ export function StockDose({line,budget,targetMol,setNumber}) {
 export function StockBudget({budget}) {
   const dispensing=acidDispensing(budget.remainingMl);
   return <div className={`stock-budget ${budget.over||budget.unresolved?"has-warning":""}`}>
-    <div className="stock-dose-title"><h4>添加液量と追加硝酸</h4><span>60–61%硝酸</span></div>
+    <div className="stock-dose-title"><h4>添加液量と追加硝酸</h4><span>ナカライテスク 硝酸(1.38)</span></div>
     <dl className="stock-metrics">
       <div><dt>添加液量の上限</dt><dd>{pretty(budget.limitMl)} mL</dd></div>
       <div><dt>ストック合計</dt><dd>{budget.unresolved?"未確定":`${pretty(budget.usedMl)} mL`}</dd></div>
@@ -135,34 +139,6 @@ export function StockBudget({budget}) {
   </div>;
 }
 
-function StockFields({form,setForm}) {
-  const field=(key,label,props={})=><label className="stock-field">{label}<input {...props} value={form[key]} onChange={e=>setForm(old=>({...old,[key]:e.target.value}))}/></label>;
-  return <>
-    <div className="stock-form-grid">
-      {field("name","ストック名",{required:true,maxLength:100,placeholder:"例：Bi-2026-01"})}
-      <label className="stock-field">酸化物<select aria-label="酸化物" value={form.oxideId} onChange={e=>setForm(old=>({...old,oxideId:e.target.value}))}>{STOCK_OXIDES.map(o=><option key={o.id} value={o.id}>{o.formula}</option>)}</select></label>
-      {field("massG","酸化物の実秤量値（g）",{required:true,type:"number",min:"0",step:"any",placeholder:"0.1000"})}
-      {field("finalMl","冷却後の最終定容体積（mL）",{required:true,type:"number",min:"0",step:"any",placeholder:"100.00"})}
-      {field("purity","酸化物含量（%・任意）",{type:"number",min:"0",max:"100",step:"any",placeholder:"未入力：補正なし"})}
-      {field("date","調製日",{type:"date"})}
-      {field("lot","試薬ロット",{maxLength:200})}{field("container","容器ID",{maxLength:200})}{field("operator","調製者",{maxLength:200})}
-      <label className="stock-field">溶解状態<select aria-label="溶解状態" value={form.status} onChange={e=>setForm(old=>({...old,status:e.target.value}))}><option value="unknown">未確認</option><option value="clear">全量溶解・残渣なしを確認</option><option value="precipitate">白濁・沈殿・残渣あり</option></select></label>
-    </div>
-    <p className="stock-caption">定容液：60–61%硝酸。加熱前の投入体積ではなく、冷却・定量移送後の最終体積を入力してください。metals basisの純度は酸化物含量として自動換算しません。</p>
-    <details className="stock-details"><summary>硝酸投入量・調製条件を記録</summary>
-      <div className="stock-form-grid">
-        <label className="stock-field">硝酸濃度の入力<select value={form.acidMode} onChange={e=>setForm(old=>({...old,acidMode:e.target.value}))}><option value="w60">60–61%（w/w、範囲）</option><option value="molar">mol/Lを指定</option></select></label>
-        {form.acidMode==="molar"&&field("acidMolarity","硝酸濃度（mol/L）",{type:"number",min:"0",step:"any"})}
-        {field("acidAmount","溶解時の硝酸投入量（任意）",{type:"number",min:"0",step:"any"})}
-        <label className="stock-field">投入量の単位<select value={form.acidUnit} onChange={e=>setForm(old=>({...old,acidUnit:e.target.value}))}><option value="ml">mL</option><option value="g">g</option></select></label>
-        {field("acidDensity","硝酸の密度（g/mL・任意）",{type:"number",min:"0",step:"any",placeholder:"製品の値・測定値"})}
-      </div>
-      <label className="stock-field">加熱・定容時の硝酸追加・確認事項<textarea rows="3" maxLength={4000} value={form.notes} onChange={e=>setForm(old=>({...old,notes:e.target.value}))}/></label>
-      <p className="stock-caption">投入量は溶解時の記録です。定容時の追加や加熱損失を含む最終遊離酸濃度・pHは推定しません。</p>
-    </details>
-  </>;
-}
-
 export function StockManager() {
   const {data,setData,ready,storageError,recover}=useStocks();
   const [form,setForm]=React.useState(newForm);
@@ -173,7 +149,9 @@ export function StockManager() {
   const [testUl,setTestUl]=React.useState("100");
   const fileRef=React.useRef(null);
   const availableStocks=data.stocks.filter(s=>s.oxideId!=="Y2O3");
-  const formError=stockError(form);
+  const design=form.designMode==="target"?stockDesign(form):null;
+  const target=targetDose({...form,name:form.name.trim()||"調製中"},form.designMol,form.designPercent);
+  const formError=stockError(form) || design?.error || (form.designMode==="target"?target.error:"");
   const c=concentration(form),acid=acidInfo(form);
   const testStock=data.stocks.find(s=>s.id===testId);
   const importBackup=async event=>{
@@ -213,11 +191,11 @@ export function StockManager() {
     {message&&<p className="stock-success" role="status">{message}</p>}
     <form onSubmit={save} className="stock-create">
       <h3>{parentId?"新しい版として登録":"新しいストックを登録"}</h3>
-      <StockFields form={form} setForm={setForm}/>
+      <StockPreparationForm form={form} setForm={setForm}/>
       {!formError && <div className="stock-preview">
         <dl className="stock-metrics"><div><dt>{oxideById(form.oxideId).element}として</dt><dd>{pretty(c*1000)} mmol/L</dd></div><div><dt>{oxideById(form.oxideId).formula}換算</dt><dd>{pretty(Number(form.massG)*(form.purity?Number(form.purity)/100:1)*1000/Number(form.finalMl))} mg/mL</dd></div></dl>
         <details className="stock-details"><summary>濃度・硝酸理論量の計算過程</summary>
-          <p>{pretty(Number(form.massG))} g × {form.purity?`${form.purity}% ÷ 100`:"1（純度補正なし）"} ÷ {pretty(oxideById(form.oxideId).molarMass)} g/mol × 金属原子数{oxideById(form.oxideId).metalAtoms} ÷ ({form.finalMl} mL ÷ 1000) = {pretty(c)} mol/L（金属基準）</p>
+          <p>{pretty(Number(form.massG))} g × {form.purity?`${form.purity}% ÷ 100`:"1（純度補正なし）"} ÷ {pretty(stockMolarMass(form))} g/mol × 金属原子数{oxideById(form.oxideId).metalAtoms} ÷ ({form.finalMl} mL ÷ 1000) = {pretty(c)} mol/L（金属基準）</p>
           <p>{acid.theoretical!==null ? `M₂O₃ + 6HNO₃ → 2M(NO₃)₃ + 3H₂Oの形式的な理論量：${pretty(acid.theoretical*1000)} mmol HNO₃。` : "この酸化物の硝酸理論量は未設定です。M₂O₃の反応式を流用しません。"}</p>
           <p>{acid.range ? `溶解時に投入したHNO₃：${pretty(acid.range[0]*1000)}–${pretty(acid.range[1]*1000)} mmol。` : "投入HNO₃量の換算には硝酸投入量・濃度、必要な場合は密度を入力してください。"}</p>
           {acid.range&&acid.theoretical!==null&&<p>理論量に対する倍率：{pretty(acid.range[0]/acid.theoretical,3)}–{pretty(acid.range[1]/acid.theoretical,3)}倍。酸不足でも溶解可能性を自動判定しません。</p>}
@@ -234,12 +212,12 @@ export function StockManager() {
         <p className="stock-card-concentration">{pretty(concentration(s)*1000)} <small>mmol/L（金属基準）</small></p>
         <p className="stock-caption">{s.massG} g → {s.finalMl} mL · {s.date||"日付未登録"} · {s.purity?`酸化物含量${s.purity}%`:"純度補正なし"}</p>
         <p className={s.status==="clear"?"stock-success":"stock-warning"}>{s.archived?"使用停止 · ":""}{s.status==="clear"?"全量溶解・残渣なしを確認":s.status==="precipitate"?"白濁・沈殿・残渣あり":"溶解状態未確認"}</p>
-        <details className="stock-details"><summary>調製記録を表示</summary><p>ロット：{s.lot||"—"}／容器：{s.container||"—"}／調製者：{s.operator||"—"}</p><p>溶解時の硝酸：{s.acidAmount||"未記録"} {s.acidAmount?s.acidUnit:""} · 定容液：60–61%硝酸</p><p className="stock-notes">{s.notes||"メモなし"}</p><p>台帳ID：{s.id}</p></details>
-        <div className="stock-toolbar"><button type="button" className="text-button" onClick={()=>{setForm({...newForm(),...s,name:`${s.name}（新版）`});setParentId(s.id);setMessage("上のフォームで変更し、新しい版として登録してください。旧版と使用履歴は保持します。");}}>複製・新しい版を作成</button><button type="button" className="text-button" onClick={()=>setData(old=>({...old,stocks:old.stocks.map(item=>item.id===s.id?{...item,archived:!item.archived}:item)}))}>{s.archived?"使用を再開":"使用を停止"}</button></div>
+        <details className="stock-details"><summary>調製記録を表示</summary><p>ロット：{s.lot||"—"}／容器：{s.container||"—"}／調製者：{s.operator||"—"}</p><p>酸化物：{s.manufacturer||"メーカー未記録"}／{s.productCode||"品番未記録"}／表示純度 {s.reportedPurity?`${s.reportedPurity}%（記録用）`:"未確認"}／計算モル質量 {pretty(stockMolarMass(s))} g/mol</p><p>溶解・定容用：{s.acidName||"60–61%硝酸（従来記録）"} · 溶解時投入 {s.acidAmount||"未記録"} {s.acidAmount?s.acidUnit:""} · 濃度 {s.acidMode==="weight"?`${s.acidPercent} w/w%`:s.acidMode==="molar"?`${s.acidMolarity} mol/L`:"60–61 w/w%"} · 密度 {s.acidDensity||"未記録"} g/mL</p>{s.designMode==="target"&&<p>設計条件：{s.designMol} mol合成、{oxideById(s.oxideId).element} {s.designPercent} mol%／分取 {s.designAliquotMl} mL。</p>}<p className="stock-notes">{s.notes||"メモなし"}</p><p>台帳ID：{s.id}</p></details>
+        <div className="stock-toolbar"><button type="button" className="text-button" onClick={()=>{setForm(revisionForm(s));setParentId(s.id);setMessage("上のフォームで変更し、新しい版として登録してください。旧版と使用履歴は保持します。");}}>複製・新しい版を作成</button><button type="button" className="text-button" onClick={()=>setData(old=>({...old,stocks:old.stocks.map(item=>item.id===s.id?{...item,archived:!item.archived}:item)}))}>{s.archived?"使用を再開":"使用を停止"}</button></div>
       </article>)}
     </div>
     <section className="stock-aliquot-test"><h3>分取体積から添加量を確認</h3><div className="stock-form-grid"><label className="stock-field">ストック<select value={testId} onChange={e=>setTestId(e.target.value)}><option value="">選択してください</option>{availableStocks.filter(s=>!s.archived).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="stock-field">分取体積（µL）<input type="number" min="0" step="any" value={testUl} onChange={e=>setTestUl(e.target.value)}/></label></div>
-      {testStock && Number.isFinite(Number(testUl)) && Number(testUl)>=0 && <p className="stock-delivered">{oxideById(testStock.oxideId).element}として {pretty(concentration(testStock)*Number(testUl))} µmol · {oxideById(testStock.oxideId).formula}換算 {pretty(concentration(testStock)*Number(testUl)/1e6/oxideById(testStock.oxideId).metalAtoms*oxideById(testStock.oxideId).molarMass*1000)} mg{testStock.status!=="clear"?"（溶解未確認の参考値）":""}</p>}
+      {testStock && Number.isFinite(Number(testUl)) && Number(testUl)>=0 && <p className="stock-delivered">{oxideById(testStock.oxideId).element}として {pretty(concentration(testStock)*Number(testUl))} µmol · {oxideById(testStock.oxideId).formula}換算 {pretty(concentration(testStock)*Number(testUl)/1e6/oxideById(testStock.oxideId).metalAtoms*stockMolarMass(testStock)*1000)} mg{testStock.status!=="clear"?"（溶解未確認の参考値）":""}</p>}
     </section>
     <section className="stock-history"><h3>使用履歴 <span className="stock-count">{data.records.length}</span></h3>
       <button type="button" className="secondary-button" disabled={!data.records.length} onClick={()=>{const rows=[["日時","ストック","酸化物","セット","目標mol","必要金属mol","分取µL","添加金属mol","濃度mol/L","追加硝酸mL"],...data.records.map(r=>[r.at,r.stock.name,oxideById(r.stock.oxideId).formula,r.setNumber,r.targetMol,r.requiredMol,r.actualUl,r.actualMol,concentration(r.stock),r.additionalAcidMl])];downloadFile("stock-usage.csv","\uFEFF"+rows.map(row=>row.map(csvCell).join(",")).join("\r\n"),"text/csv;charset=utf-8");}}>履歴CSV出力</button>

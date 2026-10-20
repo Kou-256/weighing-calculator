@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell } from "../src/lib/stocks.mjs";
+import { concentration, dosePlan, liquidBudget, acidInfo, acidDispensing, validVolume, validateBackup, OXIDES, STOCK_OXIDES, csvCell, stockDesign, targetDose, stockMolarMass } from "../src/lib/stocks.mjs";
+import { nitricPreset, oxidePreset } from "../src/lib/reagent-presets.mjs";
 
 const stock=(patch={})=>({id:"test-bi",name:"Bi reference",oxideId:"Bi2O3",massG:"0.1000",finalMl:"100.00",purity:"",status:"clear",acidMode:"w60",acidUnit:"ml",acidAmount:"",acidDensity:"",...patch});
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-10,`${a} != ${b}`);
@@ -71,4 +72,56 @@ test("invalid backup and duplicate IDs rejected before merging",()=>{
 test("CSV escapes user-entered names and spreadsheet formulas",()=>{
   assert.equal(csvCell('Bi,"test"'),'"Bi,""test"""');
   assert.equal(csvCell("=SUM(A1)"),'"\'=SUM(A1)"');
+});
+
+const designForm=(patch={})=>stock({...nitricPreset(),...oxidePreset("Eu2O3"),designMol:"0.004",designPercent:"0.01",designAliquotMl:"0.5",...patch});
+test("label presets auto-populate verified values, never infer other product grades",()=>{
+  assert.equal(nitricPreset().acidPercent,"60");assert.equal(nitricPreset().acidDensity,"1.38");
+  assert.equal(oxidePreset("Eu2O3").reportedPurity,"99.9");
+  assert.equal(oxidePreset("Tm2O3").productMolarMass,"385.867");
+  assert.equal(oxidePreset("Eu2O3").productSpecificGravity,"7.42");
+  assert.equal(oxidePreset("Eu2O3").catalogMolarMass,"351.93");
+  assert.equal(oxidePreset("Tm2O3").productMeltingPoint,"2425");
+  assert.equal(oxidePreset("Dy2O3").reportedPurity,"");
+  assert.equal(oxidePreset("Eu2O3").purity,"");
+  const s=designForm();close(stockMolarMass(s),351.918);
+  close(concentration(s),.1/351.918*2/.1);
+});
+test("60 w/w% nitric converts mL and g equivalently using 1.38 density",()=>{
+  const byMl=acidInfo(designForm({acidAmount:"10"}));
+  const byG=acidInfo(designForm({acidAmount:"13.8",acidUnit:"g"}));
+  close(byMl.range[0],13.8*.6/63.01);close(byMl.range[1],byMl.range[0]);close(byG.range[0],byMl.range[0]);
+});
+test("inverse Eu stock design reproduces the requested concentration series",()=>{
+  const form=designForm(), plan=stockDesign(form);
+  assert.equal(plan.error,"");close(plan.massG,.01407672);close(plan.concentration,.0008);
+  const s={...form,massG:String(plan.massG)};
+  for(const [x,v] of [[.01,.5],[.02,1],[.03,1.5],[.04,2],[.1,5]]){
+    const row=targetDose(s,.004,x);assert.equal(row.error,"");close(row.idealMl,v);close(row.settingMl,v);close(row.additionalMl,5-v);close(row.actualPercent,x);
+  }
+  assert.match(targetDose(s,.004,.1001).error,/上限/);
+  assert.match(targetDose(s,.004,.100001).error,/上限/); // cannot round down to hide overrun
+  assert.match(stockDesign({...form,designAliquotMl:"5.01"}).error,/上限/);
+});
+test("actual weighed mass changes aliquot and delivered mol%, independently of planned mass",()=>{
+  const s=designForm({massG:"0.0141"});
+  const dose=targetDose(s,.004,.01);
+  assert.notEqual(dose.idealMl,.5);assert.notEqual(dose.actualPercent,.01);
+  close(dose.idealMl,.004*.01/100/concentration(s)*1000);
+  close(stockDesign(s).massG,.01407672);
+  close(stockDesign(designForm({purity:"99"})).massG,.01407672/.99);
+});
+test("stock design validates increments and scales the liquid budget",()=>{
+  assert.match(stockDesign(designForm({designAliquotMl:"0.050"})).error,/ピペット|分取量/);
+  assert.match(stockDesign(designForm({designAliquotMl:"1.005"})).error,/刻み/);
+  assert.match(stockDesign(designForm({designPercent:"NaN"})).error,/入力/);
+  assert.match(stockDesign(designForm({designMol:"1e308"})).error,/範囲/);
+  close(stockDesign(designForm({designMol:"0.008",designAliquotMl:"10"})).limitMl,10);
+  assert.match(stockDesign(designForm({designMol:"0.002",designAliquotMl:"3"})).error,/上限/);
+});
+test("extended product records retain validation and legacy backup compatibility",()=>{
+  assert.ok(validateBackup({schema:1,stocks:[designForm()],records:[]}));
+  assert.throws(()=>validateBackup({schema:1,stocks:[designForm({acidPercent:"101"})],records:[]}));
+  assert.throws(()=>validateBackup({schema:1,stocks:[designForm({productMolarMass:"0"})],records:[]}));
+  assert.throws(()=>validateBackup({schema:1,stocks:[designForm({reportedPurity:"Infinity"})],records:[]}));
 });

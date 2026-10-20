@@ -25,6 +25,7 @@ export const PIPETTES = [
   {id:"large",name:"1–10 mL（0.01 mL刻み）",min:1000,max:10000,step:10},
 ];
 export const oxideById = id => OXIDES.find(x=>x.id===id);
+export const stockMolarMass = stock => stock.productMolarMass!=="" && stock.productMolarMass!=null ? Number(stock.productMolarMass) : oxideById(stock.oxideId)?.molarMass;
 export const pretty = (n, places=6) => {
   if (!Number.isFinite(Number(n))) return "—";
   if (Number(n)!==0 && Math.abs(Number(n)) < 10**-places) return Number(n).toExponential(3);
@@ -39,32 +40,63 @@ export function stockError(stock) {
   if (stock.purity!=="" && stock.purity!=null && (!Number.isFinite(Number(stock.purity)) || Number(stock.purity)<=0 || Number(stock.purity)>100)) return "酸化物含量は0超〜100%で入力してください。";
   if (!Number.isFinite(Number(stock.massG)/Number(stock.finalMl)) || Number(stock.massG)/Number(stock.finalMl)===0) return "質量・体積の桁数を確認してください。";
   if (!["unknown","clear","precipitate"].includes(stock.status)) return "溶解状態を選択してください。";
-  const optional = ["acidAmount","acidMolarity","acidDensity"];
-  for (const key of optional) if (stock[key]!=="" && stock[key]!=null && (!Number.isFinite(Number(stock[key])) || Number(stock[key])<=0)) return "硝酸の入力値は0より大きい数値にしてください。";
+  const optional = ["acidAmount","acidMolarity","acidDensity","acidMolarMass","productMolarMass"];
+  for (const key of optional) if (stock[key]!=="" && stock[key]!=null && (!Number.isFinite(Number(stock[key])) || Number(stock[key])<=0)) return "投入量・濃度・密度・モル質量は0より大きい数値にしてください。";
   if (!["ml","g"].includes(stock.acidUnit)) return "硝酸投入量の単位が不正です。";
-  if (!["w60","molar"].includes(stock.acidMode)) return "硝酸濃度の指定が不正です。";
+  if (!["w60","molar","weight"].includes(stock.acidMode)) return "硝酸濃度の指定が不正です。";
+  if(stock.acidMode==="weight" && (!Number.isFinite(Number(stock.acidPercent)) || Number(stock.acidPercent)<=0 || Number(stock.acidPercent)>100)) return "硝酸の質量濃度は0超〜100%で入力してください。";
+  if(stock.reportedPurity!=="" && stock.reportedPurity!=null && (!Number.isFinite(Number(stock.reportedPurity)) || Number(stock.reportedPurity)<=0 || Number(stock.reportedPurity)>100)) return "メーカー表示純度は0超〜100%で入力してください。";
   return "";
 }
 export function concentration(stock) {
   if (stockError(stock)) return NaN;
   const oxide=oxideById(stock.oxideId);
   const purity=stock.purity==="" || stock.purity==null ? 1 : Number(stock.purity)/100;
-  return Number(stock.massG)*purity/oxide.molarMass*oxide.metalAtoms/(Number(stock.finalMl)/1000);
+  return Number(stock.massG)*purity/stockMolarMass(stock)*oxide.metalAtoms/(Number(stock.finalMl)/1000);
 }
 export function acidInfo(stock) {
   const oxide=oxideById(stock.oxideId);
   const purity=stock.purity==="" || stock.purity==null ? 1 : Number(stock.purity)/100;
-  const theoretical=oxide?.acidCoefficient ? Number(stock.massG)*purity/oxide.molarMass*oxide.acidCoefficient : null;
+  const theoretical=oxide?.acidCoefficient && Number(stock.massG)>0 ? Number(stock.massG)*purity/stockMolarMass(stock)*oxide.acidCoefficient : null;
   let range=null;
   const amount=Number(stock.acidAmount), density=Number(stock.acidDensity);
   if (amount>0 && stock.acidMode==="molar" && Number(stock.acidMolarity)>0) {
     const ml=stock.acidUnit==="ml" ? amount : density>0 ? amount/density : null;
     if(ml!==null) range=[Number(stock.acidMolarity)*ml/1000,Number(stock.acidMolarity)*ml/1000];
+  } else if (amount>0 && stock.acidMode==="weight" && Number(stock.acidPercent)>0 && Number(stock.acidPercent)<=100) {
+    const grams=stock.acidUnit==="g" ? amount : density>0 ? amount*density : null;
+    const mw=Number(stock.acidMolarMass)||63.0128;
+    if(grams!==null) range=[grams*Number(stock.acidPercent)/100/mw,grams*Number(stock.acidPercent)/100/mw];
   } else if (amount>0 && stock.acidMode==="w60") {
     const grams=stock.acidUnit==="g" ? amount : density>0 ? amount*density : null;
     if(grams!==null) range=[grams*0.60/63.0128,grams*0.61/63.0128];
   }
   return {theoretical,range};
+}
+export function stockDesign(form) {
+  const oxide=oxideById(form.oxideId);
+  const n=Number(form.designMol), percent=Number(form.designPercent), aliquot=Number(form.designAliquotMl), finalMl=Number(form.finalMl);
+  const assay=form.purity==="" || form.purity==null ? 1 : Number(form.purity)/100;
+  if(!oxide || oxide.id==="Y2O3") return {error:"ストックに使用する酸化物を選択してください。"};
+  if(![n,percent,aliquot,finalMl,stockMolarMass(form),assay].every(v=>Number.isFinite(v)&&v>0) || percent>100 || assay>1) return {error:"合成量・目標mol%・分取量・最終定容体積を0より大きい値で入力してください（mol%・含量は100以下）。"};
+  const limitMl=5*n/.004;
+  const requiredMol=n*percent/100;
+  const c=requiredMol/(aliquot/1000);
+  const massG=c*(finalMl/1000)/oxide.metalAtoms*stockMolarMass(form)/assay;
+  if(![limitMl,requiredMol,c,massG].every(v=>Number.isFinite(v)&&v>0)) return {error:"数値が計算可能な範囲を超えています。桁数を確認してください。"};
+  const pipette=PIPETTES.find(p=>validVolume(aliquot*1000,p));
+  const error=aliquot>limitMl+1e-9 ? `分取量が添加液量の上限${pretty(limitMl)} mLを超えています。` : !pipette ? "分取量は100–1000 µL（1 µL刻み）または1–10 mL（0.01 mL刻み）で指定してください。" : "";
+  return {error,massG,concentration:c,requiredMol,limitMl,pipette};
+}
+// Includes the unrounded ideal volume: rounding must never conceal a budget overrun.
+export function targetDose(stock, targetMol, percent) {
+  const n=Number(targetMol), x=Number(percent), c=concentration(stock);
+  if(!Number.isFinite(c)||c<=0||!Number.isFinite(n)||n<=0||!Number.isFinite(x)||x<=0||x>100) return {error:"濃度・合成量・目標mol%を確認してください。"};
+  const requiredMol=n*x/100, idealMl=requiredMol/c*1000, limitMl=5*n/.004;
+  const plan=dosePlan({...stock,status:"clear",archived:false},requiredMol);
+  const settingMl=plan.settingUl/1000;
+  const over=idealMl>limitMl+1e-9 || settingMl>limitMl+1e-9;
+  return {idealMl,limitMl,settingMl,over,actualPercent:c*settingMl/1000/n*100,additionalMl:limitMl-settingMl,error:over?`上限${pretty(limitMl)} mLを超えます。`:plan.error||""};
 }
 export function dosePlan(stock, requiredMol, pipetteId="auto") {
   if (!Number.isFinite(requiredMol)||requiredMol<0) return {error:"必要物質量が不正です。"};
@@ -133,7 +165,7 @@ export function validateBackup(data) {
   for(const stock of data.stocks) {
     if(typeof stock.id!=="string"||stock.id.length>100||ids.has(stock.id)||stockError(stock)) throw new Error("台帳の酸化物・数値・IDに不正な値があります。");
     ids.add(stock.id);
-    for(const key of ["notes","date","lot","container","operator"]) if(stock[key]!=null && (typeof stock[key]!=="string"||stock[key].length>4000)) throw new Error("台帳の記録項目が不正です。");
+    for(const key of ["notes","date","lot","container","operator","manufacturer","productCode","productSource","productGrade","productCas","productShape","productSpecificGravity","productMeltingPoint","catalogMolarMass","labelMolarMass","acidName","acidProduct"]) if(stock[key]!=null && (typeof stock[key]!=="string"||stock[key].length>4000)) throw new Error("台帳の記録項目が不正です。");
   }
   for(const record of data.records) {
     if(!record || typeof record.id!=="string" || record.id.length>100 || !record.stock || stockError(record.stock) || !Number.isFinite(record.actualUl)||record.actualUl<0 || !Number.isFinite(record.requiredMol)||record.requiredMol<0 || !Number.isFinite(record.targetMol)||record.targetMol<=0 || typeof record.material!=="string"||record.material.length>100 || typeof record.at!=="string" || record.at.length>100) throw new Error("使用履歴の形式が不正です。");
