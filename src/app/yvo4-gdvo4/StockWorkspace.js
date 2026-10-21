@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import { STOCK_OXIDES, PIPETTES, oxideById, stockMolarMass, stockDesign, targetDose, resolveStockForm, preparationError, preparationSummary, pretty, stockError, concentration, acidInfo, dosePlan, validVolume, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
+import { STOCK_OXIDES, PIPETTES, oxideById, stockMolarMass, stockDesign, targetDose, resolveStockForm, preparationError, preparationSummary, pretty, stockError, concentration, acidInfo, liquidBudget, acidDispensing, csvCell, downloadFile, validateBackup } from "../../lib/stocks.mjs";
 import { nitricPreset, oxidePreset } from "../../lib/reagent-presets.mjs";
 import StockPreparationForm from "./StockPreparationForm";
+import { getDelivery, updateDelivery } from "../../lib/stock-delivery.mjs";
+export { stockLine, setStockLines } from "../../lib/stock-delivery.mjs";
 
 const STORAGE="weighing_stocks_v1";
 const StockContext=React.createContext(null);
@@ -32,20 +34,20 @@ export function StockProvider({children}) {
 }
 export const useStocks=()=>React.useContext(StockContext);
 
-export function DeliverySelector({material,element}) {
+export function DeliverySelector({material,element,setNumber}) {
   const {data,setData}=useStocks();
   if(element === "Y") return null;
-  const selected=data.delivery[material]||{};
+  const selected=getDelivery(data,material,setNumber);
   const matching=data.stocks.filter(s=>oxideById(s.oxideId)?.element===element&&!s.archived);
-  const update=(patch)=>setData(old=>({...old,delivery:{...old.delivery,[material]:{...old.delivery[material],...patch}}}));
+  const update=(patch)=>setData(old=>updateDelivery(old,material,setNumber,patch));
   return <div className="delivery-selector">
     <label>添加方法
-      <select aria-label={`${material} 添加方法`} value={selected.mode||"powder"} onChange={e=>update({mode:e.target.value})}>
+      <select aria-label={`セット ${setNumber} ${material} 添加方法`} value={selected.mode||"powder"} onChange={e=>update({mode:e.target.value})}>
         <option value="powder">粉末を秤量</option><option value="stock">ストックから分取</option>
       </select>
     </label>
     {selected.mode==="stock" && <label>使用ストック
-      <select aria-label={`${material} 使用ストック`} value={selected.stockId||""} onChange={e=>update({stockId:e.target.value})}>
+      <select aria-label={`セット ${setNumber} ${material} 使用ストック`} value={selected.stockId||""} onChange={e=>update({stockId:e.target.value})}>
         <option value="">選択してください</option>
         {matching.map(s=><option key={s.id} value={s.id}>{s.name} · {pretty(concentration(s)*1000)} mmol/L</option>)}
       </select>
@@ -54,33 +56,13 @@ export function DeliverySelector({material,element}) {
   </div>;
 }
 
-export function stockLine(data,material,requiredMol,setNumber,targetMol,experiment={}) {
-  if(material === "Y₂O₃") return null;
-  const delivery=data.delivery[material]||{};
-  if(delivery.mode!=="stock")return null;
-  const stock=data.stocks.find(s=>s.id===delivery.stockId);
-  const plan=dosePlan(stock,requiredMol,delivery.pipette||"auto");
-  if(plan.idealUl/1000>5*Number(targetMol)/.004+1e-9) plan.error="理論分取量が添加液量の上限を超えています。濃いストックまたは粉末への切替が必要です。";
-  if(stock && oxideById(stock.oxideId)?.element!==material.replace("₂O₃","")) plan.error="ストックの金属元素が試薬と一致しません。";
-  const signature=JSON.stringify([stock?.id,stock?.massG,stock?.finalMl,stock?.purity,stock?.productMolarMass,requiredMol,Number(targetMol),plan.pipette?.id,experiment]);
-  const key=`${setNumber}:${material}`;
-  const draft=data.drafts[key]?.signature===signature ? data.drafts[key] : null;
-  const entered=draft?.value;
-  const actualUl=entered!==undefined && entered!=="" ? Number(entered) : plan.settingUl;
-  const invalid=Boolean(plan.error)||entered===""||!validVolume(actualUl,plan.pipette);
-  return {material,requiredMol,stock,plan,signature,key,draft,actualUl,invalid,experiment};
-}
-export function setStockLines(data,masses,materials,setNumber,targetMol,experiment={}) {
-  return Object.entries(masses).filter(([material])=>material!=="V₂O₅").map(([material,mass])=>stockLine(data,material,mass/materials[material]*2,setNumber,targetMol,experiment)).filter(Boolean);
-}
-
 export function StockDose({line,budget,targetMol,setNumber}) {
   const {data,setData,ready,storageError}=useStocks();
   const [notice,setNotice]=React.useState("");
   const {stock,plan,signature,key,draft,actualUl,requiredMol,material}=line;
-  const selection=data.delivery[material]||{};
+  const selection=getDelivery(data,material,setNumber);
   const setVolume=value=>{setNotice("");setData(old=>({...old,drafts:{...old.drafts,[key]:{signature,value}}}));};
-  const setPipette=value=>setData(old=>({...old,delivery:{...old.delivery,[material]:{...old.delivery[material],pipette:value}}}));
+  const setPipette=value=>setData(old=>updateDelivery(old,material,setNumber,{pipette:value}));
   const actualMol=plan.concentration*actualUl/1e6;
   const latest=[...data.records].reverse().find(r=>r.signature===signature && r.setNumber===setNumber && r.material===material && r.actualUl===actualUl);
   const confirm=()=>{

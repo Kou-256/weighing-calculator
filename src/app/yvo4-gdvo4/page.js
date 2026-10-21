@@ -727,6 +727,7 @@ function MainComponent() {
               <div>
                 <h2>計算結果</h2>
                 <p>{compound.formula}・目標モル数 {targetMol} mol・{setCount}セット</p>
+                <p>添加方法はセットごと・試薬ごとに選べます。同じ元素でも粉末とストックを使い分けられます。</p>
               </div>
               <button type="button" className="secondary-button csv-button" onClick={exportToCSV}>CSV出力</button>
             </div>
@@ -753,7 +754,7 @@ function MainComponent() {
                       <div className="result-row" role="row" key={material}>
                         <strong className="material-name">{material}</strong>
                         <span className="calculated-value">{formatValue(calculated)} g</span>
-                        {element && <DeliverySelector material={material} element={element} />}
+                        {element && <DeliverySelector material={material} element={element} setNumber={setNumber} />}
                         {line ? <StockDose line={line} budget={budget} targetMol={targetMol} setNumber={setNumber} /> : <>
                         <div className="measured-field">
                           <span className="mobile-only-label">実測値</span>
