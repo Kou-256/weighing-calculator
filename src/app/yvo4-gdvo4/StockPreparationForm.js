@@ -7,8 +7,9 @@ import { ConcentrationSeries, AcidPlanning } from "./StockPlanningTools";
 import PreparationGuide from "./PreparationGuide";
 import PreparationConclusion from "./PreparationConclusion";
 
-export default function StockPreparationForm({form,setForm}) {
+export default function StockPreparationForm({form,setForm,transferNotice}) {
   const [toast,setToast]=useState(null);
+  useEffect(()=>{if(transferNotice)setToast({message:"希硝酸の条件を転記しました。初期投入量と実際の酸の条件を確認してください。",id:Date.now()});},[transferNotice]);
   useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(null),4500);return ()=>clearTimeout(timer);},[toast]);
   const update=patch=>setForm(old=>({...old,...patch,...(Object.keys(patch).some(key=>["batchCount","designAliquotMl","designMol","designPercent","oxideId","massG","purity","productMolarMass","volumeMode","finalMl","designMode","initialAcidMl","initialAcidMode","acidAmount","acidUnit","acidDensity"].includes(key))?{finalVolumeConfirmed:false}:{})}));
   const transfer=(patch,message)=>{update(patch);setToast({message,id:Date.now()});};
@@ -34,7 +35,7 @@ export default function StockPreparationForm({form,setForm}) {
       <label className="stock-field">硝酸の製品<select aria-label="硝酸の製品" value={form.acidProduct||"manual"} onChange={e=>update(e.target.value===NITRIC_ACID.id?nitricPreset():{acidProduct:"manual",acidName:"硝酸（手入力）"})}>
         <option value={NITRIC_ACID.id}>{NITRIC_ACID.name}</option><option value="manual">硝酸（手入力・別製品）</option>
       </select></label>
-      <p className="stock-caption">{form.acidMode==="weight"?`${form.acidPercent} w/w%` : form.acidMode==="molar"?`${form.acidMolarity} mol/L`:"60–61%"} · 密度 {form.acidDensity||"未設定"} g/mL。製品の値を初期入力しています。</p>
+      <p className="stock-caption">{form.acidProduct==="manual"?`${form.acidName||"手入力の硝酸"}：`:""}{form.acidMode==="weight"?`${form.acidPercent} w/w%` : form.acidMode==="molar"?`${form.acidMolarity} mol/L`:"60–61%"} · 密度 {form.acidDensity||"未設定"} g/mL。{form.acidProduct==="manual"?"実際に使用する酸の条件を確認してください。":"製品の値を初期入力しています。"}</p>
       {(form.initialAcidMode||"volume")==="volume"&&<label className="stock-field">最初に使う硝酸量（mL）<input aria-label="最初に使う硝酸量（mL）" type="number" min="0" step="any" placeholder="使用する量を指定" value={form.initialAcidMl??(acidMl>0&&Number.isFinite(acidMl)?String(acidMl):"")} onChange={e=>update({initialAcidMl:e.target.value})}/></label>}
       <p className="stock-caption">{minimum?"この初期投入量は変更しません。指定回数以上を確保し、最終体積が初期硝酸量より大きくなるよう秤量目安を切り上げます。":"これはあなたが決める初期投入量です。"} 文献の溶解比率は使いません。溶解可否は別途確認してください。</p>
       <details className="stock-details"><summary>初期硝酸量の指定方法を変更（従来の倍率計算）</summary>

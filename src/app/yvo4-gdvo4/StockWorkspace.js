@@ -105,7 +105,7 @@ export function StockDose({line,budget,targetMol,setNumber}) {
 export function StockBudget({budget}) {
   const dispensing=acidDispensing(budget.remainingMl);
   return <div className={`stock-budget ${budget.over||budget.unresolved?"has-warning":""}`}>
-    <div className="stock-dose-title"><h4>添加液量と追加硝酸</h4><span>ナカライテスク 硝酸(1.38)</span></div>
+    <div className="stock-dose-title"><h4>添加液量と追加硝酸</h4><span>液量管理（酸濃度は別途確認）</span></div>
     <dl className="stock-metrics">
       <div><dt>添加液量の上限</dt><dd>{pretty(budget.limitMl)} mL</dd></div>
       <div><dt>ストック合計</dt><dd>{budget.unresolved?"未確定":`${pretty(budget.usedMl)} mL`}</dd></div>
@@ -117,17 +117,22 @@ export function StockBudget({budget}) {
       {dispensing ? <p className="stock-caption">追加硝酸の設定例：{dispensing.parts.length ? dispensing.parts.map((p,i)=><React.Fragment key={i}>{i?" + ":""}{pretty(p.ul)} µL（{p.id==="micro"?"100–1000 µL機":"1–10 mL機"}）</React.Fragment>):"追加なし"}。添加液量の設定合計 {pretty(budget.usedMl+dispensing.totalMl)} mL（上限との差 {pretty(dispensing.differenceMl)} mL）。</p> : <p className="stock-warning">残り量は登録ピペットで設定できません。分取計画を見直してください。</p>}
       {dispensing && dispensing.differenceMl>1e-9 && <p className="stock-warning">硝酸の刻みへの丸めで上限を超えます。この設定例では実行せず、体積配分を調整してください。</p>}
     </>}
-    <details className="stock-details"><summary>液量の計算条件</summary><p>上限 = 5 mL × 目標モル数 ÷ 0.004 mol。追加硝酸 = 上限 − 全ストックの分取体積合計。これは添加する液量の管理値で、混合後の実測体積や純HNO₃量ではありません。</p></details>
+    <details className="stock-details"><summary>液量の計算条件</summary><p>上限 = 5 mL × 目標モル数 ÷ 0.004 mol。追加硝酸 = 上限 − 全ストックの分取体積合計。これは添加する液量の管理値で、混合後の実測体積や純HNO₃量ではありません。</p><p>希硝酸のストックを使うと、同じ液量でもHNO₃量・持ち込む水量が変わります。従来の濃硝酸レシピと同じ条件になるとはみなさず、使用する追加硝酸の濃度と全体の水量は実験レシピに従って確認してください。</p></details>
   </div>;
 }
 
-export function StockManager() {
+export function StockManager({acidTransfer}) {
   const {data,setData,ready,storageError,recover}=useStocks();
   const [draftForm,setForm]=React.useState(newForm);
   const form=resolveStockForm(draftForm);
   const [parentId,setParentId]=React.useState(null);
   const [message,setMessage]=React.useState("");
   const [problem,setProblem]=React.useState("");
+  React.useEffect(()=>{
+    if(!acidTransfer)return;
+    setForm(old=>({...old,...acidTransfer,finalVolumeConfirmed:false}));
+    setProblem("");setMessage("希硝酸の条件を登録フォームへ転記しました。使用する初期量を指定し、実際に調製した酸の条件を確認してください。台帳はまだ変更していません。");
+  },[acidTransfer]);
   const [testId,setTestId]=React.useState("");
   const [testUl,setTestUl]=React.useState("100");
   const fileRef=React.useRef(null);
@@ -176,7 +181,7 @@ export function StockManager() {
     {message&&<p className="stock-success" role="status">{message}</p>}
     <form onSubmit={save} className="stock-create">
       <h3>{parentId?"新しい版として登録":"新しいストックを登録"}</h3>
-      <StockPreparationForm form={form} setForm={setForm}/>
+      <StockPreparationForm form={form} setForm={setForm} transferNotice={acidTransfer}/>
       {!formError && <div className="stock-preview">
         <dl className="stock-metrics"><div><dt>{oxideById(form.oxideId).element}として</dt><dd>{pretty(c*1000)} mmol/L</dd></div><div><dt>{oxideById(form.oxideId).formula}換算</dt><dd>{pretty(Number(form.massG)*(form.purity?Number(form.purity)/100:1)*1000/Number(form.finalMl))} mg/mL</dd></div></dl>
         <details className="stock-details"><summary>濃度・硝酸理論量の計算過程</summary>

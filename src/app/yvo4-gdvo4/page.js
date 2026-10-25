@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { StockProvider, useStocks, StockManager, DeliverySelector, StockDose, StockBudget, setStockLines, liquidBudget } from "./StockWorkspace";
 import { csvCell, downloadFile, concentration } from "../../lib/stocks.mjs";
+import AcidDilutionCalculator from "./AcidDilutionCalculator";
 
 const COMPOUNDS = {
   yvo4: {
@@ -226,6 +227,7 @@ function ElementButton({ element, selected, onClick }) {
 function MainComponent() {
   const stockState = useStocks();
   const [activeView, setActiveView] = React.useState("calculator");
+  const [acidTransfer,setAcidTransfer] = React.useState(null);
   const [selectedCompound, setSelectedCompound] = React.useState("yvo4");
   const [selectedDopants, setSelectedDopants] = React.useState([]);
   const [targetMol, setTargetMol] = React.useState("0.004");
@@ -540,9 +542,11 @@ function MainComponent() {
         <nav className="workspace-tabs" aria-label="計算ツールの画面">
           <button type="button" aria-pressed={activeView === "calculator"} className={activeView === "calculator" ? "is-active" : ""} onClick={() => setActiveView("calculator")}>組成・秤量計算</button>
           <button type="button" aria-pressed={activeView === "stocks"} className={activeView === "stocks" ? "is-active" : ""} onClick={() => setActiveView("stocks")}>ストック溶液</button>
+          <button type="button" aria-pressed={activeView === "acid"} className={activeView === "acid" ? "is-active" : ""} onClick={() => setActiveView("acid")}>希硝酸の計算</button>
         </nav>
         {stockState.storageError && <p className="stock-warning" role="alert">{stockState.storageError}</p>}
-        <div hidden={activeView !== "stocks"}><StockManager /></div>
+        <div hidden={activeView !== "stocks"}><StockManager acidTransfer={acidTransfer}/></div>
+        <div hidden={activeView !== "acid"}><AcidDilutionCalculator onUseAcid={patch=>{setAcidTransfer(patch);setActiveView("stocks");}}/></div>
         <div hidden={activeView !== "calculator"}>
         <div className="workspace-grid">
           <aside className="settings-panel" aria-label="計算設定">

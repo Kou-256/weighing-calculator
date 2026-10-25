@@ -888,12 +888,16 @@ footer a:hover { text-decoration: underline; }
 /* Stock preparation and dispensing share the calculator's existing tokens. */
 [hidden] { display: none !important; }
 .workspace-tabs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
   padding: 4px; margin: 16px 0; border: 1px solid var(--border);
   border-radius: 999px; background: #eaeaec;
 }
 .workspace-tabs button { min-height: 44px; padding: 8px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
 .workspace-tabs button.is-active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
+.acid-calculator { min-width: 0; }
+.acid-calculator .preparation-conclusion { margin: 16px 0; }
+.acid-calculator p, .acid-calculator small { overflow-wrap: anywhere; }
+.acid-calculator .stock-metrics small { display: block; margin-top: 6px; color: var(--muted); }
 .stock-workspace { display: grid; gap: 18px; }
 .stock-step { display: grid; gap: 14px; min-width: 0; padding: 18px 0; border-top: 1px solid var(--border); }
 .stock-step h4 { display: flex; align-items: center; gap: 9px; }
