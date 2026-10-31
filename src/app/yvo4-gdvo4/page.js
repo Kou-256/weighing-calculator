@@ -444,19 +444,22 @@ function MainComponent() {
     }));
   };
 
-  const resetAll = () => {
-    setSelectedCompound("yvo4");
-    setSelectedDopants([]);
-    setTargetMol("0.004");
-    setSetCount(DEFAULT_SET_COUNT);
-    setDecimalPlaces(DEFAULT_DECIMAL_PLACES);
-    setAdjustmentStep(DEFAULT_ADJUSTMENT_STEP);
-    setConcentrationSets(makeEmptySets(DEFAULT_SET_COUNT));
-    setMeasuredValues(makeEmptySets(DEFAULT_SET_COUNT));
-    setWeightedMaterials(makeEmptySets(DEFAULT_SET_COUNT));
+  const resetConcentrations = () => {
+    setConcentrationSets(Object.fromEntries(
+      setNumbers.map((setNumber) => [
+        setNumber,
+        Object.fromEntries(selectedDopants.map((element) => [element, "0"])),
+      ])
+    ));
     setResults(null);
     setErrorMessage("");
-    stockState.setData((current) => ({ ...current, delivery: {}, drafts: {} }));
+  };
+
+  const resetDopants = () => {
+    setSelectedDopants([]);
+    setConcentrationSets(makeEmptySets(setCount));
+    setResults(null);
+    setErrorMessage("");
   };
 
   const exportToCSV = () => {
@@ -612,7 +615,7 @@ function MainComponent() {
 
             <div className="desktop-actions">
               <button type="button" className="primary-button" onClick={calculateMasses}>計算する</button>
-              <button type="button" className="secondary-button" onClick={resetAll}>入力をリセット</button>
+              <button type="button" className="secondary-button" onClick={resetConcentrations} title="全セットの添加濃度だけを0に戻します">入力をリセット</button>
             </div>
           </aside>
 
@@ -652,6 +655,10 @@ function MainComponent() {
                 <p className="info-note"><span aria-hidden="true">i</span>Biは希土類元素ではありませんが、母体材料サイトを置換します。</p>
               </div>
 
+              <button type="button" className="secondary-button" onClick={resetDopants} disabled={selectedDopants.length === 0}>
+                置換元素の選択をリセット
+              </button>
+
               {showMaterials && (
                 <div className="molar-mass-list">
                   {activeMaterials.map((material) => (
@@ -666,6 +673,7 @@ function MainComponent() {
                 <div>
                   <h2>添加濃度（各セット）</h2>
                   <p>矢印キーまたは±ボタンで {formatPercentage(concentrationStep)}% ずつ調整できます。</p>
+                  <p>「入力をリセット」は全セットの添加濃度だけを0に戻します。元素の選択や他の設定は保持します。</p>
                 </div>
                 <span className="host-balance-label">母体材料の酸化物 {compound.hostOxide}</span>
               </div>
@@ -712,7 +720,7 @@ function MainComponent() {
 
             <div className="mobile-actions">
               <button type="button" className="primary-button" onClick={calculateMasses}>計算する</button>
-              <button type="button" className="secondary-button" onClick={resetAll}>入力をリセット</button>
+              <button type="button" className="secondary-button" onClick={resetConcentrations} title="全セットの添加濃度だけを0に戻します">入力をリセット</button>
             </div>
 
             {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
