@@ -5,6 +5,7 @@ import Image from "next/image";
 import { StockProvider, useStocks, StockManager, DeliverySelector, StockDose, StockBudget, setStockLines, liquidBudget } from "./StockWorkspace";
 import { csvCell, downloadFile, concentration } from "../../lib/stocks.mjs";
 import AcidDilutionCalculator from "./AcidDilutionCalculator";
+import { DEFAULT_CONCENTRATION_STEP, validConcentrationStep, concentrationPrecision, shiftConcentration } from "../../lib/concentration-step.mjs";
 
 const COMPOUNDS = {
   yvo4: {
@@ -80,6 +81,7 @@ const STORAGE_KEYS = {
   setCount: "weighing_setCount",
   decimalPlaces: "weighing_decimalPlaces",
   adjustmentStep: "weighing_adjustmentStep",
+  concentrationStep: "weighing_concentrationStep",
 };
 
 const makeSetNumbers = (count) =>
@@ -234,6 +236,7 @@ function MainComponent() {
   const [setCount, setSetCount] = React.useState(DEFAULT_SET_COUNT);
   const [decimalPlaces, setDecimalPlaces] = React.useState(DEFAULT_DECIMAL_PLACES);
   const [adjustmentStep, setAdjustmentStep] = React.useState(DEFAULT_ADJUSTMENT_STEP);
+  const [concentrationStepInput, setConcentrationStepInput] = React.useState(DEFAULT_CONCENTRATION_STEP);
   const [concentrationSets, setConcentrationSets] = React.useState(() => makeEmptySets(DEFAULT_SET_COUNT));
   const [measuredValues, setMeasuredValues] = React.useState(() => makeEmptySets(DEFAULT_SET_COUNT));
   const [weightedMaterials, setWeightedMaterials] = React.useState(() => makeEmptySets(DEFAULT_SET_COUNT));
@@ -249,7 +252,8 @@ function MainComponent() {
     () => Object.keys(RARE_EARTH_DOPANTS).filter((element) => element !== compound.hostElement),
     [compound.hostElement]
   );
-  const concentrationStep = 10 ** -decimalPlaces;
+  const concentrationStep = validConcentrationStep(concentrationStepInput) ? concentrationStepInput : DEFAULT_CONCENTRATION_STEP;
+  const concentrationDigits = concentrationPrecision(concentrationStep, decimalPlaces);
   const adjustmentStepNumber = Number(adjustmentStep) > 0 ? Number(adjustmentStep) : Number(DEFAULT_ADJUSTMENT_STEP);
   const adjustmentPrecision = Math.min(8, Math.max(decimalPlaces, decimalLength(adjustmentStep)));
 
@@ -269,6 +273,8 @@ function MainComponent() {
       setTargetMol(localStorage.getItem(STORAGE_KEYS.targetMol) || "0.004");
       const savedAdjustmentStep = localStorage.getItem(STORAGE_KEYS.adjustmentStep);
       setAdjustmentStep(savedAdjustmentStep && Number(savedAdjustmentStep) > 0 ? savedAdjustmentStep : DEFAULT_ADJUSTMENT_STEP);
+      const savedConcentrationStep = localStorage.getItem(STORAGE_KEYS.concentrationStep);
+      setConcentrationStepInput(validConcentrationStep(savedConcentrationStep) ? savedConcentrationStep : DEFAULT_CONCENTRATION_STEP);
       setConcentrationSets(normalizeSets(JSON.parse(localStorage.getItem(STORAGE_KEYS.concentrationSets) || "{}"), savedCount));
       setMeasuredValues(normalizeSets(JSON.parse(localStorage.getItem(STORAGE_KEYS.measuredValues) || "{}"), savedCount));
       setWeightedMaterials(normalizeSets(JSON.parse(localStorage.getItem(STORAGE_KEYS.weightedMaterials) || "{}"), savedCount));
@@ -288,12 +294,13 @@ function MainComponent() {
       [STORAGE_KEYS.setCount]: String(setCount),
       [STORAGE_KEYS.decimalPlaces]: String(decimalPlaces),
       [STORAGE_KEYS.adjustmentStep]: adjustmentStep,
+      [STORAGE_KEYS.concentrationStep]: concentrationStep,
       [STORAGE_KEYS.concentrationSets]: JSON.stringify(concentrationSets),
       [STORAGE_KEYS.measuredValues]: JSON.stringify(measuredValues),
       [STORAGE_KEYS.weightedMaterials]: JSON.stringify(weightedMaterials),
     };
     Object.entries(values).forEach(([key, value]) => localStorage.setItem(key, value));
-  }, [isHydrated, selectedCompound, selectedDopants, targetMol, setCount, decimalPlaces, adjustmentStep, concentrationSets, measuredValues, weightedMaterials]);
+  }, [isHydrated, selectedCompound, selectedDopants, targetMol, setCount, decimalPlaces, adjustmentStep, concentrationStep, concentrationSets, measuredValues, weightedMaterials]);
 
   const updateSetCount = (nextCount) => {
     setSetCount(nextCount);
@@ -335,9 +342,9 @@ function MainComponent() {
 
   const updateConcentration = (setNumber, element, rawValue) => {
     const normalized = rawValue.replace(",", ".");
-    const pattern = decimalPlaces === 0
+    const pattern = concentrationDigits === 0
       ? /^\d*$/
-      : new RegExp(`^\\d*(?:\\.\\d{0,${decimalPlaces}})?$`);
+      : new RegExp(`^\\d*(?:\\.\\d{0,${concentrationDigits}})?$`);
     if (!pattern.test(normalized)) return;
     if (normalized !== "" && Number(normalized) > 100) return;
 
@@ -354,9 +361,9 @@ function MainComponent() {
   };
 
   const incrementConcentration = (setNumber, element, direction) => {
-    const current = Number(concentrationSets[setNumber]?.[element] || 0);
-    const next = Math.min(100, Math.max(0, current + concentrationStep * direction));
-    updateConcentration(setNumber, element, next.toFixed(decimalPlaces));
+    updateConcentration(setNumber, element, shiftConcentration(
+      concentrationSets[setNumber]?.[element], concentrationStep, direction, decimalPlaces
+    ));
   };
 
   const substitutionTotal = (setNumber) => selectedDopants.reduce(
@@ -402,7 +409,7 @@ function MainComponent() {
   };
 
   const formatValue = (value) => Number(value || 0).toFixed(decimalPlaces);
-  const formatPercentage = (value) => formatDisplayNumber(value, decimalPlaces);
+  const formatPercentage = (value) => formatDisplayNumber(value, concentrationDigits);
 
   const updateMeasuredValue = (setNumber, material, value) => {
     setMeasuredValues((current) => ({
@@ -612,6 +619,32 @@ function MainComponent() {
                 help="1〜20セット"
               />
             </div>
+
+            <details className="stock-details concentration-settings">
+              <summary>詳細設定</summary>
+              <label className="setting-field">
+                <span className="setting-label">添加濃度の増減幅（%）</span>
+                <span className="unit-field">
+                  <input
+                    aria-label="添加濃度の増減幅（%）"
+                    type="text"
+                    inputMode="decimal"
+                    value={concentrationStepInput}
+                    onChange={(event) => {
+                      const value = event.target.value.replace(",", ".");
+                      if (/^\d*(?:\.\d{0,8})?$/.test(value)) setConcentrationStepInput(value);
+                    }}
+                    onBlur={() => {
+                      if (!validConcentrationStep(concentrationStepInput)) setConcentrationStepInput(DEFAULT_CONCENTRATION_STEP);
+                    }}
+                    onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                  />
+                  <span>%</span>
+                </span>
+              </label>
+              <p>±ボタンと上下矢印キーの増減幅です（初期値0.01%、0より大きく100%以下、小数点以下8桁まで）。表示桁数・実測値の微調整幅とは別に保存します。必要な小数桁数は自動で確保します。</p>
+              {concentrationStepInput !== "" && !validConcentrationStep(concentrationStepInput) && <p role="status">有効な増減幅を入力してください。未確定の間は0.01%で操作し、入力を離れると初期値に戻します。</p>}
+            </details>
 
             <div className="desktop-actions">
               <button type="button" className="primary-button" onClick={calculateMasses}>計算する</button>

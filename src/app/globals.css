@@ -993,6 +993,8 @@ footer a:hover { text-decoration: underline; }
 .stock-metrics dt { font-size: .75rem; font-weight: 400; color: var(--muted); }
 .stock-metrics dd { margin: 4px 0 0; font-size: 1.02rem; font-weight: 600; overflow-wrap: anywhere; }
 .stock-details { min-width: 0; border-top: 1px solid var(--border); padding-top: 10px; }
+.concentration-settings { margin: 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow); }
+.concentration-settings .setting-field { margin-top: 12px; }
 .stock-details summary { color: var(--accent); font-size: .82rem; font-weight: 500; cursor: pointer; padding: 4px 0; }
 .stock-details p { font-size: .8rem; line-height: 1.7; color: var(--muted); margin: 10px 0 0; overflow-wrap: anywhere; }
 .stock-details .stock-form-grid { margin: 14px 0; }
