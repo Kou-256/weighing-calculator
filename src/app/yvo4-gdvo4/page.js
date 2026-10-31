@@ -249,8 +249,6 @@ function MainComponent() {
     () => Object.keys(RARE_EARTH_DOPANTS).filter((element) => element !== compound.hostElement),
     [compound.hostElement]
   );
-  const selectedRareEarths = selectedDopants.filter((element) => element in RARE_EARTH_DOPANTS);
-  const selectedOtherSubstituents = selectedDopants.filter((element) => element in OTHER_SUBSTITUENTS);
   const concentrationStep = 10 ** -decimalPlaces;
   const adjustmentStepNumber = Number(adjustmentStep) > 0 ? Number(adjustmentStep) : Number(DEFAULT_ADJUSTMENT_STEP);
   const adjustmentPrecision = Math.min(8, Math.max(decimalPlaces, decimalLength(adjustmentStep)));
@@ -369,16 +367,12 @@ function MainComponent() {
     const masses = {};
     const concentrations = {};
 
-    selectedRareEarths.forEach((element) => {
+    // Preserve click order across rare-earth elements and Bi in every result consumer.
+    selectedDopants.forEach((element) => {
       const concentration = Number(concentrationSets[setNumber]?.[element] || 0);
       concentrations[element] = concentration;
-      masses[RARE_EARTH_DOPANTS[element]] = (targetMetalMol * concentration / 100 / 2) * MATERIALS[RARE_EARTH_DOPANTS[element]];
-    });
-
-    selectedOtherSubstituents.forEach((element) => {
-      const concentration = Number(concentrationSets[setNumber]?.[element] || 0);
-      concentrations[element] = concentration;
-      masses[OTHER_SUBSTITUENTS[element]] = (targetMetalMol * concentration / 100 / 2) * MATERIALS[OTHER_SUBSTITUENTS[element]];
+      const material = ALL_ADDITIVES[element];
+      masses[material] = (targetMetalMol * concentration / 100 / 2) * MATERIALS[material];
     });
 
     const hostConcentration = 100 - substitutionTotal(setNumber);
