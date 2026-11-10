@@ -1,0 +1,36 @@
+/* Shared typography and surfaces. The calculator retains its blue accent. */
+:root {
+  --font-inter: var(--font-noto-sans-jp);
+  --color-accent-50: var(--accent-soft);
+  --color-accent-100: var(--color-blue-100);
+  --color-accent-200: var(--color-blue-200);
+  --color-accent-300: var(--color-blue-300);
+  --color-accent-400: var(--accent-hover);
+  --color-accent-500: var(--accent);
+  --color-accent-600: var(--accent);
+  --color-accent-700: var(--accent);
+  --color-accent-800: var(--color-blue-800);
+  --color-accent-900: var(--color-blue-900);
+  --color-accent-950: var(--color-blue-950);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--muted);
+  --color-text-tertiary: var(--muted);
+  --color-text-placeholder: var(--muted);
+  --color-background-full: var(--page);
+  --color-background-secondary-default: var(--surface-soft);
+  --color-background-tertiary-default: var(--page);
+  --color-border-button-default: var(--border);
+  --color-border-button-hover: var(--border);
+  --color-separator-border: var(--border);
+  --color-border-focus-ring: color-mix(in srgb, var(--accent) 24%, transparent);
+  --color-pill-tab-blue-selected-background: var(--surface);
+  --color-pill-tab-blue-hover-background: var(--page);
+  --color-button-ghost-background: var(--surface);
+  --color-button-ghost-disabled: var(--surface-soft);
+  --color-button-ghost-hover: var(--page);
+  --color-button-ghost-active: var(--segmented-background);
+  --color-button-ghost-foreground: var(--accent);
+  --gradient-button-primary-default: linear-gradient(var(--accent), var(--accent));
+  --gradient-button-primary-hover: linear-gradient(var(--accent-hover), var(--accent-hover));
+  --gradient-button-primary-active: linear-gradient(var(--accent), var(--accent));
+}

@@ -13,5 +13,6 @@ export function shiftConcentration(value, step, direction, decimalPlaces) {
   const precision = concentrationPrecision(safeStep, decimalPlaces);
   const factor = 10 ** precision;
   const next = Math.min(100, Math.max(0, Number(value || 0) + Number(safeStep) * direction));
-  return (Math.round((next + Number.EPSILON) * factor) / factor).toFixed(precision);
+  const fixed = (Math.round((next + Number.EPSILON) * factor) / factor).toFixed(precision);
+  return fixed.includes(".") ? fixed.replace(/0+$/, "").replace(/\.$/, "") : fixed;
 }

@@ -1,4 +1,13 @@
 import './globals.css'
+import { Noto_Sans_JP } from 'next/font/google'
+
+const notoSansJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  variable: '--font-noto-sans-jp',
+  display: 'swap',
+  preload: false,
+  fallback: ['Yu Gothic', 'Meiryo', 'sans-serif'],
+})
 
 export const metadata = {
   metadataBase: new URL('https://weighing-calculator.vercel.app'),
@@ -42,7 +51,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ja">
+    <html lang="ja" dir="ltr" className={notoSansJP.variable}>
       <body>{children}</body>
     </html>
   )

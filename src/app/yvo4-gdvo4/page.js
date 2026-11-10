@@ -2,6 +2,9 @@
 
 import React from "react";
 import Image from "next/image";
+import { Button } from "@/components/base/buttons/button";
+import { DirectionProvider } from "@/components/foundations/direction/direction";
+import { resetWeighingStockWorkspace } from "@/lib/calculator-reset.mjs";
 import { StockProvider, useStocks, StockManager, DeliverySelector, StockDose, StockBudget, setStockLines, liquidBudget } from "./StockWorkspace";
 import { csvCell, downloadFile, concentration } from "../../lib/stocks.mjs";
 import AcidDilutionCalculator from "./AcidDilutionCalculator";
@@ -451,15 +454,30 @@ function MainComponent() {
     }));
   };
 
-  const resetConcentrations = () => {
-    setConcentrationSets(Object.fromEntries(
-      setNumbers.map((setNumber) => [
-        setNumber,
-        Object.fromEntries(selectedDopants.map((element) => [element, "0"])),
-      ])
-    ));
+  const resetResults = () => {
     setResults(null);
+    setMeasuredValues(makeEmptySets(setCount));
+    setWeightedMaterials(makeEmptySets(setCount));
+    stockState.setData((current) => resetWeighingStockWorkspace(current));
+    setShowDetails(false);
     setErrorMessage("");
+  };
+
+  const resetAllInputs = () => {
+    setSelectedCompound("yvo4");
+    setSelectedDopants([]);
+    setTargetMol("0.004");
+    setSetCount(DEFAULT_SET_COUNT);
+    setDecimalPlaces(DEFAULT_DECIMAL_PLACES);
+    setAdjustmentStep(DEFAULT_ADJUSTMENT_STEP);
+    setConcentrationStepInput(DEFAULT_CONCENTRATION_STEP);
+    setConcentrationSets(makeEmptySets(DEFAULT_SET_COUNT));
+    setMeasuredValues(makeEmptySets(DEFAULT_SET_COUNT));
+    setWeightedMaterials(makeEmptySets(DEFAULT_SET_COUNT));
+    setResults(null);
+    setShowDetails(false);
+    setErrorMessage("");
+    stockState.setData((current) => resetWeighingStockWorkspace(current, true));
   };
 
   const resetDopants = () => {
@@ -648,7 +666,6 @@ function MainComponent() {
 
             <div className="desktop-actions">
               <button type="button" className="primary-button" onClick={calculateMasses}>計算する</button>
-              <button type="button" className="secondary-button" onClick={resetConcentrations} title="全セットの添加濃度だけを0に戻します">入力をリセット</button>
             </div>
           </aside>
 
@@ -688,9 +705,6 @@ function MainComponent() {
                 <p className="info-note"><span aria-hidden="true">i</span>Biは希土類元素ではありませんが、母体材料サイトを置換します。</p>
               </div>
 
-              <button type="button" className="secondary-button" onClick={resetDopants} disabled={selectedDopants.length === 0}>
-                置換元素の選択をリセット
-              </button>
 
               {showMaterials && (
                 <div className="molar-mass-list">
@@ -706,7 +720,7 @@ function MainComponent() {
                 <div>
                   <h2>添加濃度（各セット）</h2>
                   <p>矢印キーまたは±ボタンで {formatPercentage(concentrationStep)}% ずつ調整できます。</p>
-                  <p>「入力をリセット」は全セットの添加濃度だけを0に戻します。元素の選択や他の設定は保持します。</p>
+                  <p>下のリセットボタンで、入力全体・添加元素と濃度・計算結果をそれぞれリセットできます。</p>
                 </div>
                 <span className="host-balance-label">母体材料の酸化物 {compound.hostOxide}</span>
               </div>
@@ -753,8 +767,18 @@ function MainComponent() {
 
             <div className="mobile-actions">
               <button type="button" className="primary-button" onClick={calculateMasses}>計算する</button>
-              <button type="button" className="secondary-button" onClick={resetConcentrations} title="全セットの添加濃度だけを0に戻します">入力をリセット</button>
             </div>
+
+            <DirectionProvider locale="ja-JP">
+              <div className="flex flex-col gap-3 rounded-3xl border border-border-button-default bg-background-primary-default p-4" role="group" aria-label="リセット操作">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" className="min-h-11 h-auto w-full sm:w-auto" onClick={resetAllInputs}>入力をリセット（全部）</Button>
+                  <Button variant="secondary" className="min-h-11 h-auto w-full sm:w-auto" onClick={resetDopants}>添加元素と濃度のみリセット</Button>
+                  <Button variant="secondary" className="min-h-11 h-auto w-full sm:w-auto" onClick={resetResults}>計算結果をリセット</Button>
+                </div>
+                <p className="text-body-2-regular text-text-secondary">全部：組成・秤量画面の設定と結果を初期化。元素と濃度のみ：他の設定・実測値を保持（再計算が必要）。結果のみ：濃度や設定を残し、結果・実測値・秤量済みチェック・未確定の分取量を消去。登録済みストック・使用履歴・実験ノートは削除しません。</p>
+              </div>
+            </DirectionProvider>
 
             {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
           </div>

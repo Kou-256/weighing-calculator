@@ -20,6 +20,11 @@
 .DS_Store
 *.pem
 HiraKakuProN-W*.ttf
+/src/app/fonts/
+HiraKaku*.woff2
+HiraKaku*.woff
+HiraKaku*.ttf
+HiraKaku*.otf
 
 # debug
 npm-debug.log*
