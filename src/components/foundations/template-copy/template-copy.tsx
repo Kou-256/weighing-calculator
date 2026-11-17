@@ -49,7 +49,14 @@ export function translateTemplateCopy<T>(value: T, translate: TemplateCopyTransl
         else if (dataProps.has(key)) updates[key] = visit(original, true);
         else if (renderProps.has(key) && typeof original === "function") updates[key] = (...args: unknown[]) => visit(original(...args));
       }
-      return Object.entries(updates).some(([key, result]) => result !== value.props[key]) ? cloneElement(value, updates) : value;
+      if (!Object.entries(updates).some(([key, result]) => result !== value.props[key])) return value;
+      // Spread static children back as arguments so React keeps treating them
+      // as fixed JSX children (passing a new array would demand list keys).
+      if (Array.isArray(updates.children) && Array.isArray(value.props.children)) {
+        const { children, ...rest } = updates;
+        return cloneElement(value, rest, ...(children as ReactNode[]));
+      }
+      return cloneElement(value, updates);
     }
     if (data && value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
       const result: Record<string, unknown> = { ...value };
