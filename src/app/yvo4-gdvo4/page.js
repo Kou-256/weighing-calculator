@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/base/buttons/button";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
 import { resetWeighingStockWorkspace } from "@/lib/calculator-reset.mjs";
+import NotebookTransfer from "./NotebookTransfer";
 import { StockProvider, useStocks, StockManager, DeliverySelector, StockDose, StockBudget, setStockLines, liquidBudget } from "./StockWorkspace";
 import { csvCell, downloadFile, concentration } from "../../lib/stocks.mjs";
 import AcidDilutionCalculator from "./AcidDilutionCalculator";
@@ -547,6 +548,7 @@ function MainComponent() {
               <small>YVO₄ / GdVO₄</small>
             </span>
           </a>
+          <a className="secondary-button page-notebook-link" href="/lab-notebook">実験ノート →</a>
         </header>
 
         <section className="app-header" aria-labelledby="calculator-title">
@@ -806,6 +808,18 @@ function MainComponent() {
                     <h3>セット {setNumber}</h3>
                     <span>{selectedDopants.length ? selectedDopants.map((element) => `${element} ${formatPercentage(concentrationSets[setNumber]?.[element] || 0)}%`).join(" / ") : "純粋系"}</span>
                   </div>
+                  <NotebookTransfer snapshot={{
+                    compound: compound.formula, targetMol, setNumber,
+                    concentrations: results[setNumber].concentrations,
+                    materials: Object.entries(results[setNumber].masses).map(([material, calculated]) => {
+                      const line = lines.find(item => item.material === material);
+                      const record = line && [...stockState.data.records].reverse().find(r => r.signature === line.signature && r.setNumber === setNumber && r.material === material && r.actualUl === line.actualUl);
+                      return { material, calculated, measured: line ? '' : measuredValues[setNumber]?.[material] || '', weighed: !line && Boolean(weightedMaterials[setNumber]?.[material]),
+                        method: line ? 'ストック' : '粉末', stockId: line?.stock?.id || '', stockName: line?.stock?.name || '',
+                        concentration: line?.stock ? concentration(line.stock) : null, actualUl: line && !line.invalid ? line.actualUl : null, confirmedAt: record?.at || '', error: line?.invalid ? '分取条件未確定' : '' };
+                    }),
+                    liquidBudget: { limitMl: budget.limitMl, usedMl: budget.unresolved ? null : budget.usedMl, remainingMl: budget.unresolved ? null : budget.remainingMl, unresolved: budget.unresolved, over: budget.over },
+                  }} />
                   <div className="result-table" role="table" aria-label={`セット ${setNumber} の秤量結果`}>
                     <div className="result-header" role="row">
                       <span>試薬</span><span>計算値</span><span>実測値</span><span>秤量済み</span><span>微調整</span>

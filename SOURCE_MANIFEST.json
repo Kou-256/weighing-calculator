@@ -1,0 +1,351 @@
+{
+  "description": "Current local source including uncommitted changes",
+  "snapshotDate": "2026-11-17",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 535,
+      "sha256": "01e149c9d3877039694734045ab967c94bde7830a87a3d8c3beae81c5da8d2c1"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 5286,
+      "sha256": "404c2c10231708cfd6ea61a51e2bb53df90f3f2a83321a7a2d9ee349aece275b"
+    },
+    {
+      "path": "docs/LAB_NOTEBOOK_HANDOFF.md",
+      "bytes": 7864,
+      "sha256": "a743158b7ba7ca9dfe38df9ebbc3f7578178dad2d4d68fafe87ef5d4b30c6dad"
+    },
+    {
+      "path": "middleware.js",
+      "bytes": 595,
+      "sha256": "cf36dc552f453dce472a8bb488eee7ebae40d4cceebd3c068a3afcd95242010e"
+    },
+    {
+      "path": "next.config.js",
+      "bytes": 250,
+      "sha256": "16f2fffc047baa141b289426b249780d6d2b8e455c24350049b3981e96c24e90"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 70283,
+      "sha256": "cb37fac5d41c4625ced4fb8f59c60506730b341cabb4ad762c59100dacef1ee9"
+    },
+    {
+      "path": "package.json",
+      "bytes": 833,
+      "sha256": "0a363a281a076ff90ca09f86a212a1f694eb63eee6560a2948390ebed58f0483"
+    },
+    {
+      "path": "postcss.config.js",
+      "bytes": 76,
+      "sha256": "d0e5e86ac189a1968cb63aad341b3cc74771259d22a652ca1ca5047e6216bec8"
+    },
+    {
+      "path": "public/site.webmanifest",
+      "bytes": 611,
+      "sha256": "37e00466bc6b206f62c6dd1dbecc495cf6f334a3084a9a51ea259b6984f2a50e"
+    },
+    {
+      "path": "public/yvo4_gdvo4_weighing_icon_preview.png",
+      "bytes": 27919,
+      "sha256": "2ceec6ebd62d83ed1ede6d341b4736f6d4a868acbba738363acd4fae38b3d0f8"
+    },
+    {
+      "path": "public/yvo4_gdvo4_weighing_icon.svg",
+      "bytes": 2224,
+      "sha256": "026eb131852316394fe1659413cc4ac93e650ce926f2c582a14a43630b1cec8f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 24556,
+      "sha256": "aecb2027d068ecb7c805e2ed500ed9ab509d3580fd20902c81697dfc369ebe35"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 1948,
+      "sha256": "8feffa654b71580a50fb1825f35fd5c0550b4ab9d60703e0f3bb71f465562257"
+    },
+    {
+      "path": "src/app/globals.css",
+      "bytes": 31886,
+      "sha256": "c79a878b30b6cbfb57deedc1cb905e95101f968b284386c3300c19dbcaa606d9"
+    },
+    {
+      "path": "src/app/lab-notebook/notebook.css",
+      "bytes": 13595,
+      "sha256": "0a8cc06a63e89fc186143ac353b218ed5f81a48d8f5f1fd2f91b70db5862347d"
+    },
+    {
+      "path": "src/app/lab-notebook/Notebook.js",
+      "bytes": 33295,
+      "sha256": "2faf9f0315457dd95000c5e4178f98b49241e1a779112abb651efce29b97e86b"
+    },
+    {
+      "path": "src/app/lab-notebook/NotebookControls.js",
+      "bytes": 3107,
+      "sha256": "3949e39b61bd0964a89b83e97e4506e025a7c5e7cd47d619abb3f58be66a739f"
+    },
+    {
+      "path": "src/app/lab-notebook/NotebookManager.js",
+      "bytes": 4960,
+      "sha256": "f0c089ff97cd8c63ea1cebff4f00aaf0320ac2aaf9e3b21e1aa982d964df2ac7"
+    },
+    {
+      "path": "src/app/lab-notebook/page.js",
+      "bytes": 409,
+      "sha256": "18ec939b522ee59216a20ae146cfa185222caa2785af631e5faba5990e384aae"
+    },
+    {
+      "path": "src/app/lab-notebook/StepVisual.js",
+      "bytes": 5104,
+      "sha256": "751e7042477df5544c0eaddf8e2b6449a662bda4b6f024965bae73715525799d"
+    },
+    {
+      "path": "src/app/layout.js",
+      "bytes": 2052,
+      "sha256": "aad9a81d39b09a4d02855a0c13b038c23252297d3f177942bca3bea8bda1d903"
+    },
+    {
+      "path": "src/app/page.js",
+      "bytes": 4877,
+      "sha256": "f2b87dbc595a32a605ba9eebe202dc36d22fc82c15b7d344d653b2c2b5848413"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/AcidDilutionCalculator.js",
+      "bytes": 8448,
+      "sha256": "490ae41433016b78e3002ade31a016e8dca7fcdcb194f3da44c6bd1d3080acba"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/layout.js",
+      "bytes": 1008,
+      "sha256": "403fb2fdafa4759a2f63611101270f85e66cbd4ec732ad5d83ab48bb4e1668bc"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/NotebookTransfer.js",
+      "bytes": 822,
+      "sha256": "9be2dda30a2cdc8de00e14d2c0a5489a1ef9d0ac890bba41629aed7626ff79a1"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/page.js",
+      "bytes": 45462,
+      "sha256": "b6b470b76e7a0b82b21e177670c28f3b620c8fde4794063bb16441f50636f047"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/PreparationConclusion.js",
+      "bytes": 3767,
+      "sha256": "8ea80c962985fb88fbca8276bdcb4257b06a67d29364804e7553da6da710af4e"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/PreparationGuide.js",
+      "bytes": 3021,
+      "sha256": "6a7c8b8153584c0b8b26cc918175f2a99d5c33482d3a36ce81ec6584a90865d4"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/StockPlanningTools.js",
+      "bytes": 5065,
+      "sha256": "416a253ef68f9e23672dd2a5d5067dd518906be3f4af74dde07926c2ed059a82"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/StockPreparationForm.js",
+      "bytes": 25133,
+      "sha256": "ede3ae8c6761440880ac0258073369f53d83d5acb100dd8e7ebccc45f5fa107e"
+    },
+    {
+      "path": "src/app/yvo4-gdvo4/StockWorkspace.js",
+      "bytes": 23778,
+      "sha256": "77949bc83ab7ff182c74534ad2e935a5e44173d1005136db65071cc13efe504f"
+    },
+    {
+      "path": "src/components/base/buttons/button.tsx",
+      "bytes": 7880,
+      "sha256": "b147c988c73dd8c226ab6ede3d7019eac9a7125191bbd646fcdd25bea803ca41"
+    },
+    {
+      "path": "src/components/base/date-picker/date-picker.tsx",
+      "bytes": 4600,
+      "sha256": "e11e0b338c09a3b22819fdfb1502f9bf5ad55fb2667bc17ce97756d571733fe4"
+    },
+    {
+      "path": "src/components/base/date-picker/shared.tsx",
+      "bytes": 14293,
+      "sha256": "cf8c3b2cb12b7aff3a8941620ef91f6d7a67d6d140b6fe061c6b23ce06c21ffa"
+    },
+    {
+      "path": "src/components/base/input/hint-text.tsx",
+      "bytes": 1351,
+      "sha256": "b37d026d5f2bd78536b7e08259a086afdaf171defea7484ecd8ace9b1c254b06"
+    },
+    {
+      "path": "src/components/base/input/input.tsx",
+      "bytes": 11025,
+      "sha256": "c24efbd120081cb1e5fd928ce6f220f8134f26f2f93d32f267eb33017198dda3"
+    },
+    {
+      "path": "src/components/base/input/label.tsx",
+      "bytes": 1909,
+      "sha256": "a053bec8ad9f79f15ad8d7f031eac740588781d4e1b34d1cb1b3c5d44a4b2199"
+    },
+    {
+      "path": "src/components/base/number-field/number-field.tsx",
+      "bytes": 4105,
+      "sha256": "eeeaa33e2963741afafb379869c2aca97bc68ed3374966adbba95ea0157b7f13"
+    },
+    {
+      "path": "src/components/base/tabs/pill-tab.tsx",
+      "bytes": 5977,
+      "sha256": "0b35654d05f8daa7ea899c9e7a098f694a630842ec0e9b1a40b41dcc7a1e5f70"
+    },
+    {
+      "path": "src/components/base/tabs/tabs.tsx",
+      "bytes": 6422,
+      "sha256": "7e128de15aaef1c2de0ebd7c2fd0d989098c58e371aeb77836c335e01e30eeb1"
+    },
+    {
+      "path": "src/components/base/textarea/textarea.tsx",
+      "bytes": 10339,
+      "sha256": "2fc9a92cbf372418a87d7230e6d6a3780504c7421158f9b33d71e4a10d56bb57"
+    },
+    {
+      "path": "src/components/base/time-field/time-field.tsx",
+      "bytes": 4358,
+      "sha256": "6f6a7f9f0edeaad403b09695cec56456694b7fab04a8402c46756d0ade9cc3fb"
+    },
+    {
+      "path": "src/components/foundations/direction/direction.tsx",
+      "bytes": 1276,
+      "sha256": "7bfab075a6d5fe3a2b3f3b810ba2ab4e870f50029a41d8c4b0bee9bfd4a43756"
+    },
+    {
+      "path": "src/components/foundations/template-copy/template-copy.tsx",
+      "bytes": 4360,
+      "sha256": "1db60e15c1a5d6a710a08d249e05e3853521f604e8dcf5757c1ad4a75bad011f"
+    },
+    {
+      "path": "src/lib/acid-dilution.mjs",
+      "bytes": 3016,
+      "sha256": "f67deda77e3b1f36e68a04e4c00c92d277eb75c8525c891dccf2f4c777ae477d"
+    },
+    {
+      "path": "src/lib/calculator-reset.mjs",
+      "bytes": 235,
+      "sha256": "d00d9450595a08adfdbdf707da8fdc6149876e0c3ac4f9349b085548c433baae"
+    },
+    {
+      "path": "src/lib/concentration-step.mjs",
+      "bytes": 877,
+      "sha256": "e0f2f6a8f5af2907780d3dc61b18ff349253dc213138273ed18e07950c567c10"
+    },
+    {
+      "path": "src/lib/notebook-merge.mjs",
+      "bytes": 2277,
+      "sha256": "52d1eebb11344d4a791fb7842d1173be933f713dd0a5ce2d442b2aaf5c96c613"
+    },
+    {
+      "path": "src/lib/notebook-storage.js",
+      "bytes": 4631,
+      "sha256": "2347179c93d594843cf9f7320a7f10bbfc96f69f4a66d4ac7793be1bf53d6dda"
+    },
+    {
+      "path": "src/lib/notebook.mjs",
+      "bytes": 16471,
+      "sha256": "ac0c77cb86ad6fcaea871c7c9105d6491230897f02eba5ec9970bf2720067f34"
+    },
+    {
+      "path": "src/lib/reagent-presets.mjs",
+      "bytes": 1826,
+      "sha256": "1104ba97b6e59ed5cba5fa15a8387b75afab5d2f3978a05ee00f0e33d5e12f47"
+    },
+    {
+      "path": "src/lib/stock-delivery.mjs",
+      "bytes": 2166,
+      "sha256": "013d50163fde67c8cc3bac1b27a3fb968bf3d55867f645f27f3f6e3a735e71f0"
+    },
+    {
+      "path": "src/lib/stocks.mjs",
+      "bytes": 21592,
+      "sha256": "3089604db6fd9a97b670b507cd9b9d6827dc2ef93e5005286fb6ab2ef1013a1c"
+    },
+    {
+      "path": "src/styles/globals.css",
+      "bytes": 32899,
+      "sha256": "672abee06f77039727bd7d65e4a248c00d7cc693609103eff187a367d9347259"
+    },
+    {
+      "path": "src/styles/notebook-theme.css",
+      "bytes": 3202,
+      "sha256": "bb98fae6881f18e2b09ded112ae6a38c5bad785ea11332cde19f615e431a4f64"
+    },
+    {
+      "path": "src/styles/theme.css",
+      "bytes": 56472,
+      "sha256": "3c7fcc7710b0f44be0d86bc8e822e88f737d0269d207e9e2f4d2e73fd6da8f34"
+    },
+    {
+      "path": "src/styles/typography.css",
+      "bytes": 11100,
+      "sha256": "dfd4e9b446998d063efe96a47fc31fd2492639bf641d0da1b60645fe4dcc32a1"
+    },
+    {
+      "path": "src/utils/cx.ts",
+      "bytes": 1628,
+      "sha256": "db35ea5afa8b2e0fd51319bc49288c4df7c98ec53440b43903636a32e3319d9d"
+    },
+    {
+      "path": "src/utils/directional-icon.ts",
+      "bytes": 563,
+      "sha256": "02692ff42abfea0e3ddf0ca79cd1f816cdce65f923efb0d61d2f3663a9202c47"
+    },
+    {
+      "path": "src/utils/use-dismiss-on-outside-press.ts",
+      "bytes": 2654,
+      "sha256": "01c70c3b25018e9c8d1d6d84ca67facb9392b5d4baf1c7207bbcfe13d4b33699"
+    },
+    {
+      "path": "tailwind.config.js",
+      "bytes": 163,
+      "sha256": "099baea1f2f8696fe10fba8eebf842a471b94be5077ed0a3e648006da7b34b44"
+    },
+    {
+      "path": "tests/acid-dilution.test.mjs",
+      "bytes": 3126,
+      "sha256": "c9e9065dd4bb8f2454e3ec106d1cd5983053bbc716615db5e56ec6e7fbb4be7f"
+    },
+    {
+      "path": "tests/calculator-reset.test.mjs",
+      "bytes": 1131,
+      "sha256": "334a2f13988347edbf8fb421759c1df3e62de5a333ae5dee32b38d71bd0a5fde"
+    },
+    {
+      "path": "tests/concentration-step.test.mjs",
+      "bytes": 1749,
+      "sha256": "7c25071820d1c5c9b7eb1974a3f190503d69004dd4e071d68f89fc9f36402a28"
+    },
+    {
+      "path": "tests/notebook-merge.test.mjs",
+      "bytes": 2166,
+      "sha256": "c5a87ac7c4f317aed772c52b251eeb22697d3764b2588c697fe01a7e18cbdeac"
+    },
+    {
+      "path": "tests/notebook.test.mjs",
+      "bytes": 4155,
+      "sha256": "ccc7d76c8e6bd0a339417a3b30e31ab31864ebac55f33dbb37b0f96ce5fd843c"
+    },
+    {
+      "path": "tests/stock-delivery.test.mjs",
+      "bytes": 4279,
+      "sha256": "0e6d2080aec2a8797a4684f055041a44a77bbcdfe995e70a3180ee7dfc7a4360"
+    },
+    {
+      "path": "tests/stocks.test.mjs",
+      "bytes": 17601,
+      "sha256": "396a9a90b56ed6aa1b9aecb90b1c9a22fa48746cd6a30de01e086c368ecb77bb"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 566,
+      "sha256": "e756e7a5c72c69a2f08d40682ab5294bf555ffa4085f634261da2a49615bab06"
+    }
+  ]
+}

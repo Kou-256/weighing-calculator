@@ -1,5 +1,5 @@
 @import '../styles/globals.css';
-@import '../styles/calculator-theme.css';
+@import '../styles/notebook-theme.css';
 @config '../../tailwind.config.js';
 
 :root {
@@ -7,7 +7,7 @@
   --surface: #ffffff;
   --surface-soft: #fbfbfd;
   --text: #1d1d1f;
-  --muted: #6e6e73;
+  --muted: var(--color-neutral-600);
   --border: #d2d2d7;
   --accent: #0071e3;
   --accent-hover: #0077ed;
@@ -18,6 +18,9 @@
   --radius-md: 16px;
   --radius-sm: 12px;
   --shadow: 0 2px 10px rgba(0, 0, 0, 0.055);
+  --app-content-width: 720px;
+  --segmented-background: #eaeaec;
+  --segmented-font-size: 1rem;
 }
 
 * { box-sizing: border-box; }
@@ -40,15 +43,16 @@ h1,
 h2,
 h3 { font-weight: 600; }
 
-button,
-input { font: inherit; }
+/* Keep resets weaker than primary/secondary/selected button classes. */
+:where(.calculator-page) button,
+:where(.calculator-page) input { font: inherit; }
 
-button { color: inherit; }
+:where(.calculator-page) button { color: inherit; }
 
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-  outline: 3px solid rgba(0, 113, 227, 0.18);
+.calculator-page button:focus-visible,
+.calculator-page input:focus-visible,
+.calculator-page a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 24%, transparent);
   outline-offset: 2px;
 }
 
@@ -59,7 +63,7 @@ a:focus-visible {
 }
 
 .app-shell {
-  width: min(720px, 100%);
+  width: min(var(--app-content-width), 100%);
   margin: 0 auto;
 }
 
@@ -83,6 +87,18 @@ a:focus-visible {
   align-items: center;
   gap: 11px;
   color: var(--text);
+  text-decoration: none;
+}
+
+.page-header > .page-notebook-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  font-size: 0.875rem;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -394,7 +410,7 @@ a:focus-visible {
   border-color: var(--accent);
   color: white;
   background: var(--accent);
-  box-shadow: 0 3px 8px rgba(0, 113, 227, 0.18);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .element-button:focus:not(:focus-visible) { outline: none; }
@@ -554,7 +570,7 @@ a:focus-visible {
   border: 1px solid var(--accent);
   color: white;
   background: var(--accent);
-  box-shadow: 0 4px 10px rgba(0, 113, 227, 0.18);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .primary-button:hover { background: var(--accent-hover); }
@@ -807,7 +823,7 @@ a:focus-visible {
 .calculation-equation span { color: var(--muted); font-size: 0.76rem; font-weight: 400; line-height: 1.5; }
 .calculation-equation b { font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
 
-footer {
+.calculator-page footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -817,13 +833,13 @@ footer {
   font-size: 0.75rem;
 }
 
-footer a {
+.calculator-page footer a {
   color: var(--accent);
   font-weight: 600;
   text-decoration: none;
 }
 
-footer a:hover { text-decoration: underline; }
+.calculator-page footer a:hover { text-decoration: underline; }
 
 @media (max-width: 520px) {
   .calculator-page { padding: 10px 8px 22px; }
@@ -872,11 +888,12 @@ footer a:hover { text-decoration: underline; }
 }
 
 @media (max-width: 370px) {
+  .calculator-page .workspace-tabs button { padding-inline: 2px; }
   .page-brand-copy small { display: none; }
   .settings-pair { grid-template-columns: 1fr; }
   .element-grid { grid-template-columns: repeat(3, 1fr); }
   .reagent-section dl { grid-template-columns: 1fr; }
-  footer { align-items: flex-start; }
+  .calculator-page footer { align-items: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -890,7 +907,8 @@ footer a:hover { text-decoration: underline; }
 .workspace-tabs {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
   padding: 4px; margin: 16px 0; border: 1px solid var(--border);
-  border-radius: 999px; background: #eaeaec;
+  border-radius: 999px; background: var(--segmented-background);
+  font-size: var(--segmented-font-size);
 }
 .workspace-tabs button { min-height: 44px; padding: 8px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
 .workspace-tabs button.is-active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
