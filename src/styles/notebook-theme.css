@@ -34,3 +34,32 @@
   --gradient-button-primary-hover: linear-gradient(var(--accent-hover), var(--accent-hover));
   --gradient-button-primary-active: linear-gradient(var(--accent), var(--accent));
 }
+
+/* Calendar popovers are portalled outside the notebook's main element.
+ * Scope the accent aliases to both surfaces so route changes never leave
+ * the calculator green, and the notebook calendar never inherits blue. */
+.nb-page,
+.nb-calendar-popover {
+  --accent: var(--color-emerald-700);
+  --accent-hover: var(--color-emerald-600);
+  --accent-soft: var(--color-emerald-50);
+  --color-accent-50: var(--accent-soft);
+  --color-accent-100: var(--color-emerald-100);
+  --color-accent-200: var(--color-emerald-200);
+  --color-accent-300: var(--color-emerald-300);
+  --color-accent-400: var(--accent-hover);
+  --color-accent-500: var(--accent);
+  --color-accent-600: var(--accent);
+  --color-accent-700: var(--accent);
+  --color-accent-800: var(--color-emerald-800);
+  --color-accent-900: var(--color-emerald-900);
+  --color-accent-950: var(--color-emerald-950);
+  --color-border-focus-ring: color-mix(in srgb, var(--accent) 24%, transparent);
+  --color-button-ghost-foreground: var(--accent);
+  --color-date-range-background: var(--color-accent-100);
+  --color-date-range-edge-background: var(--color-accent-300);
+  --color-tab-count-selected-background: var(--color-accent-100);
+  --gradient-button-primary-default: linear-gradient(var(--accent), var(--accent));
+  --gradient-button-primary-hover: linear-gradient(var(--accent-hover), var(--accent-hover));
+  --gradient-button-primary-active: linear-gradient(var(--accent), var(--accent));
+}

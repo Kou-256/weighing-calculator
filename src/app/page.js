@@ -38,15 +38,20 @@ export default function Home() {
         </header>
 
         <section className="grid gap-4 md:grid-cols-2">
+          <Link href="/lab-notebook" className="rounded-[24px] border border-border-button-default bg-background-primary-default p-5 shadow-sm transition hover:border-accent-600">
+            <span className="text-caption-1-semibold text-accent-600">実験ノート・マニュアル</span>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight">YVO₄ 作製ノート →</h2>
+            <p className="mt-2 text-sm leading-6 text-[#6e6e73]">試料別の手順、予定時刻、写真と観察記録。装置の使い方も確認できます。</p>
+          </Link>
           {calculators.map((calculator) => (
             <Link
               key={calculator.href}
               href={calculator.href}
-              className="group rounded-[24px] border border-[#d2d2d7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#0071e3] hover:shadow-[0_18px_48px_rgba(0,0,0,0.10)] focus:outline-none focus:ring-4 focus:ring-[#0071e3]/15"
+              className="group rounded-[24px] border border-border-button-default bg-background-primary-default p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent-600 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-border-focus-ring"
             >
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <div className="inline-flex rounded-full bg-[#f5f5f7] px-3 py-1 text-xs font-semibold text-[#0071e3]">
+                  <div className="inline-flex rounded-full bg-background-secondary-default px-3 py-1 text-caption-1-semibold text-accent-600">
                     {calculator.status}
                   </div>
                   <h2 className="mt-4 text-2xl font-semibold tracking-tight">
@@ -56,7 +61,7 @@ export default function Home() {
                     {calculator.subtitle}
                   </p>
                 </div>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#d2d2d7] bg-[#fbfbfd] text-xl font-semibold text-[#0071e3] transition group-hover:border-[#0071e3] group-hover:bg-[#f5faff]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-button-default bg-background-secondary-default text-title-3-semibold text-accent-600 transition group-hover:border-accent-600 group-hover:bg-button-ghost-disabled">
                   →
                 </div>
               </div>
